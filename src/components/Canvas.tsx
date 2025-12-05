@@ -8,7 +8,7 @@ interface Props {
 	onWheel: (event: WheelEvent) => void;
 }
 
-export function Canvas(props: Props) {
+export const Canvas = (props: Props) => {
 	return (
 		<canvas
 			ref={props.canvasRef}
@@ -23,4 +23,4 @@ export function Canvas(props: Props) {
 			onContextMenu={(e) => e.preventDefault()}
 		/>
 	);
-}
+};

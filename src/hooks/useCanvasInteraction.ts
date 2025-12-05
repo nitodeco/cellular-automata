@@ -44,7 +44,7 @@ export function useCanvasInteraction(
 		if (isPanning()) {
 			const dx = event.clientX - lastMousePos().x;
 			const dy = event.clientY - lastMousePos().y;
-			
+
 			setViewport((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
 			setLastMousePos({ x: event.clientX, y: event.clientY });
 		} else if (isDrawing()) {

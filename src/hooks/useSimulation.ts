@@ -9,25 +9,50 @@ import {
 	setCell,
 } from "../core/grid";
 import { getStepFunction, type RuleName } from "../core/rules";
+import {
+	type Agent,
+	createAgents,
+	DEFAULT_SLIME_CONFIG,
+	type SlimeConfig,
+	stepSlime,
+} from "../core/slime";
 
 export function useSimulation() {
 	const bufferA = createGrid(GRID_ROWS, GRID_COLS);
 	const bufferB = createGrid(GRID_ROWS, GRID_COLS);
 
 	const [currentBuffer, setCurrentBuffer] = createSignal<Grid>(bufferA);
-	const [rule, setRule] = createSignal<RuleName>("conway");
+	const [rule, setRule] = createSignal<RuleName>("slime");
 	const [running, setRunning] = createSignal(false);
 	const [speed, setSpeed] = createSignal(100);
+	const [slimeConfig, setSlimeConfig] =
+		createSignal<SlimeConfig>(DEFAULT_SLIME_CONFIG);
 
 	let engine: Engine | undefined;
+	const agentsRef: { current: Agent[] } = { current: [] };
+
+	function initAgents() {
+		const config = slimeConfig();
+		const count = Math.floor(GRID_ROWS * GRID_COLS * (config.agentCount / 100));
+		agentsRef.current = createAgents(count, GRID_COLS, GRID_ROWS);
+	}
 
 	function tick() {
-		const stepFunction = getStepFunction(rule());
-
+		const currentRule = rule();
 		const source = currentBuffer();
 		const destination = source === bufferA ? bufferB : bufferA;
 
-		stepFunction(source, destination);
+		if (currentRule === "slime") {
+			if (agentsRef.current.length === 0) {
+				initAgents();
+			}
+
+			stepSlime(source, destination, agentsRef.current, slimeConfig());
+		} else {
+			const stepFunction = getStepFunction(currentRule);
+			stepFunction(source, destination);
+		}
+
 		setCurrentBuffer(destination);
 	}
 
@@ -50,12 +75,27 @@ export function useSimulation() {
 	}
 
 	function handleClear() {
-		clearGrid(currentBuffer());
-		setCurrentBuffer(currentBuffer() === bufferA ? bufferA : bufferB);
+		const current = currentBuffer();
+		clearGrid(current);
+
+		const other = current === bufferA ? bufferB : bufferA;
+		clearGrid(other);
+
+		if (rule() === "slime") {
+			agentsRef.current = [];
+		}
+
+		setCurrentBuffer(current === bufferA ? bufferA : bufferB);
 	}
 
 	function handleRandom() {
-		randomizeGrid(currentBuffer(), 0.3);
+		if (rule() === "slime") {
+			initAgents();
+			clearGrid(currentBuffer());
+			clearGrid(currentBuffer() === bufferA ? bufferB : bufferA);
+		} else {
+			randomizeGrid(currentBuffer(), 0.3);
+		}
 		setCurrentBuffer(currentBuffer() === bufferA ? bufferA : bufferB);
 	}
 
@@ -66,6 +106,28 @@ export function useSimulation() {
 
 	function handleRuleChange(newRule: RuleName) {
 		setRule(newRule);
+		handleClear();
+		if (newRule === "slime") {
+			initAgents();
+		} else {
+			handleRandom();
+		}
+	}
+
+	function handleSlimeConfigChange(
+		key: keyof SlimeConfig,
+		value: number | string,
+	) {
+		setSlimeConfig((prev) => ({
+			...prev,
+			[key]: value,
+		}));
+
+		if (key === "agentCount") {
+			initAgents();
+			clearGrid(currentBuffer());
+			clearGrid(currentBuffer() === bufferA ? bufferB : bufferA);
+		}
 	}
 
 	function setCellAt(row: number, col: number, value: number) {
@@ -75,6 +137,9 @@ export function useSimulation() {
 
 	onMount(() => {
 		engine = createEngine(tick);
+		if (rule() === "slime") {
+			initAgents();
+		}
 		onCleanup(() => {
 			engine?.stop();
 		});
@@ -85,12 +150,14 @@ export function useSimulation() {
 		rule,
 		running,
 		speed,
+		slimeConfig,
 		handlePlayPause,
 		handleStep,
 		handleClear,
 		handleRandom,
 		handleSpeedChange,
 		handleRuleChange,
+		handleSlimeConfigChange,
 		setCellAt,
 	};
 }

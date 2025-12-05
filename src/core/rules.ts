@@ -1,6 +1,6 @@
 import type { Grid } from "./grid";
 
-export type RuleName = "conway" | "briansbrain";
+export type RuleName = "conway" | "briansbrain" | "slime";
 
 function countNeighborsInterior(
 	data: Uint8Array,
@@ -291,5 +291,7 @@ export function getStepFunction(
 			return stepConway;
 		case "briansbrain":
 			return stepBriansBrain;
+		case "slime":
+			return () => {};
 	}
 }

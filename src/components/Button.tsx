@@ -7,7 +7,7 @@ interface Props {
 	class?: string;
 }
 
-export function Button(props: Props) {
+export const Button = (props: Props) => {
 	const baseClasses =
 		"px-3 py-1 border-2 border-gray-600 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer";
 
@@ -25,4 +25,4 @@ export function Button(props: Props) {
 			{props.children}
 		</button>
 	);
-}
+};
