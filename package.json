@@ -1,5 +1,13 @@
 {
-	"name": "cellular-automata-lab",
+	"name": "@nitodeco/slime-mold-simulation",
+	"description": "A simulation of slime mold growth",
+	"author": "Nico Möhn",
+	"license": "MIT",
+	"homepage": "https://slime.nicomoehn.codes",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/nitodeco/slime-mold-simulation"
+	},
 	"version": "1.0.0",
 	"type": "module",
 	"scripts": {
