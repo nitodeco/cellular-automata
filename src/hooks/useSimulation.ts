@@ -20,7 +20,10 @@ import {
 	type GPUSimulation,
 } from "../core/webgpu/gpuSimulation";
 import {
+	decodeSimulationSettings,
+	encodeSimulationSettings,
 	loadSimulationSettings,
+	type SimulationSettings,
 	saveSimulationSettings,
 } from "../utils/storage";
 
@@ -28,17 +31,35 @@ export function useSimulation() {
 	const bufferA = createGrid(GRID_ROWS, GRID_COLS);
 	const bufferB = createGrid(GRID_ROWS, GRID_COLS);
 
+	function loadSettingsFromQuery(): SimulationSettings | null {
+		if (typeof window === "undefined") {
+			return null;
+		}
+
+		const searchParams = new URLSearchParams(window.location.search);
+		const encodedSettings = searchParams.get("config");
+
+		if (!encodedSettings) {
+			return null;
+		}
+
+		return decodeSimulationSettings(encodedSettings);
+	}
+
 	const [currentBuffer, setCurrentBuffer] = createSignal<Grid>(bufferA);
 	const [running, setRunning] = createSignal(false);
 
-	const loadedSettings = loadSimulationSettings();
-	const [speed, setSpeed] = createSignal(loadedSettings?.speed ?? 50);
+	const querySettings = loadSettingsFromQuery();
+	const storedSettings = loadSimulationSettings();
+	const initialSettings = querySettings ?? storedSettings;
+
+	const [speed, setSpeed] = createSignal(initialSettings?.speed ?? 50);
 	const [slimeConfig, setSlimeConfig] = createSignal<SlimeConfig>(
-		loadedSettings?.slimeConfig ?? DEFAULT_SLIME_CONFIG,
+		initialSettings?.slimeConfig ?? DEFAULT_SLIME_CONFIG,
 	);
 	const [gpuAvailable, setGpuAvailable] = createSignal(false);
 	const [useWebGPU, setUseWebGPU] = createSignal(
-		loadedSettings?.useWebGPU ?? true,
+		initialSettings?.useWebGPU ?? true,
 	);
 	const [gpuInitializing, setGpuInitializing] = createSignal(true);
 	const [canvasKey, setCanvasKey] = createSignal(0);
@@ -416,9 +437,9 @@ export function useSimulation() {
 				const stream = canvasRef.captureStream(actualFps);
 
 				const codecOptions = [
-					{ mimeType: "video/webm; codecs=vp9", bitrate: 10_000_000 },
-					{ mimeType: "video/webm; codecs=vp8", bitrate: 8_000_000 },
-					{ mimeType: "video/webm", bitrate: 5_000_000 },
+					{ mimeType: "video/webm; codecs=vp9", bitrate: 8_000_000 },
+					{ mimeType: "video/webm; codecs=vp8", bitrate: 5_000_000 },
+					{ mimeType: "video/webm", bitrate: 3_000_000 },
 				];
 
 				let selectedCodec = codecOptions[codecOptions.length - 1];
@@ -463,6 +484,24 @@ export function useSimulation() {
 				setIsRecording(false);
 			}
 		}
+	}
+
+	function getShareUrl(): string {
+		if (typeof window === "undefined") {
+			return "";
+		}
+
+		const currentSettings: SimulationSettings = {
+			speed: speed(),
+			slimeConfig: slimeConfig(),
+			useWebGPU: useWebGPU(),
+		};
+
+		const encodedSettings = encodeSimulationSettings(currentSettings);
+		const shareUrl = new URL(window.location.href);
+		shareUrl.searchParams.set("config", encodedSettings);
+
+		return shareUrl.toString();
 	}
 
 	createEffect(() => {
@@ -526,5 +565,6 @@ export function useSimulation() {
 		handleToggleRecording,
 		setCanvasRef,
 		isRecording,
+		getShareUrl,
 	};
 }

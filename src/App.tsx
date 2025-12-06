@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js";
 import { Canvas } from "./components/Canvas";
 import { ControlDock } from "./components/ControlDock/ControlDock";
+import { ShareControl } from "./components/ControlDock/ShareControl";
 import { MobileWarningDialog } from "./components/MobileWarningDialog";
 import { PerformancePanel } from "./components/PerformancePanel";
 import { useGridRenderer } from "./hooks/useGridRenderer";
@@ -28,6 +29,9 @@ const App = () => {
 
 	return (
 		<div class="relative w-full h-screen overflow-hidden bg-gray-900">
+			<div class="absolute top-4 left-4 z-20 pointer-events-auto">
+				<ShareControl getShareUrl={simulationHook.getShareUrl} />
+			</div>
 			<For each={[simulationHook.canvasKey()]}>
 				{() => (
 					<Canvas
