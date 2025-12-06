@@ -12,8 +12,8 @@ struct Config {
   agentCount: u32,
 }
 
-@group(0) @binding(0) var<storage, read_write> source: array<atomic<u32>>;
-@group(0) @binding(1) var<storage, read_write> destination: array<atomic<u32>>;
+@group(0) @binding(0) var<storage, read> source: array<u32>;
+@group(0) @binding(1) var<storage, read_write> destination: array<u32>;
 @group(0) @binding(2) var<uniform> config: Config;
 
 const SCALE: f32 = 1000.0;
@@ -46,7 +46,7 @@ fn main(
     let haloY1 = haloIdx1 / TILE_WITH_HALO;
     let globalX1 = (tileBaseX + haloX1 - 1u) & colsMask;
     let globalY1 = (tileBaseY + haloY1 - 1u) & rowsMask;
-    tile[haloIdx1] = atomicLoad(&source[globalY1 * width + globalX1]);
+    tile[haloIdx1] = source[globalY1 * width + globalX1];
 
     let haloIdx2 = linearLocalId + 162u;
     if (haloIdx2 < 324u) {
@@ -54,7 +54,7 @@ fn main(
       let haloY2 = haloIdx2 / TILE_WITH_HALO;
       let globalX2 = (tileBaseX + haloX2 - 1u) & colsMask;
       let globalY2 = (tileBaseY + haloY2 - 1u) & rowsMask;
-      tile[haloIdx2] = atomicLoad(&source[globalY2 * width + globalX2]);
+      tile[haloIdx2] = source[globalY2 * width + globalX2];
     }
   }
 
@@ -88,6 +88,7 @@ fn main(
   let blurred = sum / 9.0;
   let diffused = original * (1.0 - config.diffuseWeight) + blurred * config.diffuseWeight;
   let decayed = diffused - config.decayRate * SCALE;
+  let clamped = clamp(decayed, 0.0, 255.0 * SCALE);
 
-  atomicStore(&destination[cellY * width + cellX], u32(max(decayed, 0.0)));
+  destination[cellY * width + cellX] = u32(clamped);
 }

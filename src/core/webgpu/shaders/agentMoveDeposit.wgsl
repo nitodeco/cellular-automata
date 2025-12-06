@@ -91,14 +91,6 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
   let pixelIndex = pixelY * config.width + pixelX;
 
   let depositU32 = u32(config.depositAmount * SCALE);
-  let maxValue = u32(255.0 * SCALE);
-
-  var oldValue = atomicLoad(&destGrid[pixelIndex]);
-  var newValue = oldValue + depositU32;
-  if (newValue > maxValue) {
-    newValue = maxValue;
-  }
-
-  atomicMax(&destGrid[pixelIndex], newValue);
+  atomicAdd(&destGrid[pixelIndex], depositU32);
 }
 

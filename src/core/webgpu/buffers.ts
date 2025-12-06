@@ -5,6 +5,10 @@ export interface GridBuffers {
 	bufferB: GPUBuffer;
 	width: number;
 	height: number;
+	textureA: GPUTexture;
+	textureB: GPUTexture;
+	textureViewA: GPUTextureView;
+	textureViewB: GPUTextureView;
 }
 
 export interface AgentBuffers {
@@ -28,17 +32,45 @@ export function createGridBuffers(
 
 	const bufferA = device.createBuffer({
 		size,
-		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+		usage:
+			GPUBufferUsage.STORAGE |
+			GPUBufferUsage.COPY_DST |
+			GPUBufferUsage.COPY_SRC,
 		label: "Grid Buffer A",
 	});
 
 	const bufferB = device.createBuffer({
 		size,
-		usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+		usage:
+			GPUBufferUsage.STORAGE |
+			GPUBufferUsage.COPY_DST |
+			GPUBufferUsage.COPY_SRC,
 		label: "Grid Buffer B",
 	});
 
-	return { bufferA, bufferB, width, height };
+	const textureDescriptor: GPUTextureDescriptor = {
+		size: { width, height },
+		format: "r32uint",
+		usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+		label: "Grid Texture",
+	};
+
+	const textureA = device.createTexture(textureDescriptor);
+	const textureB = device.createTexture(textureDescriptor);
+
+	const textureViewA = textureA.createView();
+	const textureViewB = textureB.createView();
+
+	return {
+		bufferA,
+		bufferB,
+		width,
+		height,
+		textureA,
+		textureB,
+		textureViewA,
+		textureViewB,
+	};
 }
 
 export function clearGridBuffers(
@@ -180,6 +212,8 @@ export function destroyBuffers(
 ): void {
 	gridBuffers.bufferA.destroy();
 	gridBuffers.bufferB.destroy();
+	gridBuffers.textureA.destroy();
+	gridBuffers.textureB.destroy();
 	agentBuffers.positionsX.destroy();
 	agentBuffers.positionsY.destroy();
 	agentBuffers.angles.destroy();

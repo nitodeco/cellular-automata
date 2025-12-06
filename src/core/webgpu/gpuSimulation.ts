@@ -60,7 +60,10 @@ interface GPUSimulationState {
 	cachedColorR: number;
 	cachedColorG: number;
 	cachedColorB: number;
+	gridTextureBytesPerRow: number;
 }
+
+const frameSeedArray = new Float32Array(1);
 
 function createCachedBindGroups(
 	device: GPUDevice,
@@ -116,7 +119,7 @@ function createCachedBindGroups(
 	const renderA = device.createBindGroup({
 		layout: renderPipeline.pipeline.getBindGroupLayout(0),
 		entries: [
-			{ binding: 0, resource: { buffer: gridBuffers.bufferA } },
+			{ binding: 0, resource: gridBuffers.textureViewA },
 			{ binding: 1, resource: { buffer: renderUniform.buffer } },
 		],
 	});
@@ -124,7 +127,7 @@ function createCachedBindGroups(
 	const renderB = device.createBindGroup({
 		layout: renderPipeline.pipeline.getBindGroupLayout(0),
 		entries: [
-			{ binding: 0, resource: { buffer: gridBuffers.bufferB } },
+			{ binding: 0, resource: gridBuffers.textureViewB },
 			{ binding: 1, resource: { buffer: renderUniform.buffer } },
 		],
 	});
@@ -137,6 +140,28 @@ function createCachedBindGroups(
 		renderA,
 		renderB,
 	};
+}
+
+function copyGridBufferToTexture(
+	state: GPUSimulationState,
+	commandEncoder: GPUCommandEncoder,
+	useBufferA: boolean,
+): void {
+	const sourceBuffer = useBufferA
+		? state.gridBuffers.bufferA
+		: state.gridBuffers.bufferB;
+	const destinationTexture = useBufferA
+		? state.gridBuffers.textureA
+		: state.gridBuffers.textureB;
+
+	commandEncoder.copyBufferToTexture(
+		{
+			buffer: sourceBuffer,
+			bytesPerRow: state.gridTextureBytesPerRow,
+		},
+		{ texture: destinationTexture },
+		{ width: state.width, height: state.height },
+	);
 }
 
 export async function createGPUSimulation(
@@ -196,6 +221,7 @@ export async function createGPUSimulation(
 		cachedColorR: -1,
 		cachedColorG: -1,
 		cachedColorB: -1,
+		gridTextureBytesPerRow: width * 4,
 	};
 
 	return {
@@ -227,10 +253,9 @@ function tickAndRender(state: GPUSimulationState): void {
 		);
 		state.configDirty = false;
 	} else {
-		const configData = state.configUniform.data;
-		const dataView = new DataView(configData.buffer);
-		dataView.setFloat32(28, state.frameIndex, true);
-		device.queue.writeBuffer(state.configUniform.buffer, 0, configData);
+		state.configUniform.data[7] = state.frameIndex;
+		frameSeedArray[0] = state.frameIndex;
+		device.queue.writeBuffer(state.configUniform.buffer, 28, frameSeedArray);
 	}
 
 	const { r, g, b } = hexToRgb(state.currentConfig.color);
@@ -285,6 +310,8 @@ function tickAndRender(state: GPUSimulationState): void {
 	agentMoveDepositPass.end();
 
 	if (state.canvasContext) {
+		copyGridBufferToTexture(state, commandEncoder, !state.currentSourceIsA);
+
 		const renderBindGroup = state.currentSourceIsA
 			? state.cachedBindGroups.renderB
 			: state.cachedBindGroups.renderA;
@@ -344,6 +371,8 @@ function render(state: GPUSimulationState): void {
 	const commandEncoder = device.createCommandEncoder();
 
 	if (state.canvasContext) {
+		copyGridBufferToTexture(state, commandEncoder, state.currentSourceIsA);
+
 		const renderBindGroup = state.currentSourceIsA
 			? state.cachedBindGroups.renderA
 			: state.cachedBindGroups.renderB;
@@ -411,6 +440,8 @@ function reinitAgents(state: GPUSimulationState, count: number): void {
 function destroy(state: GPUSimulationState): void {
 	state.gridBuffers.bufferA.destroy();
 	state.gridBuffers.bufferB.destroy();
+	state.gridBuffers.textureA.destroy();
+	state.gridBuffers.textureB.destroy();
 	state.agentBuffers.positionsX.destroy();
 	state.agentBuffers.positionsY.destroy();
 	state.agentBuffers.angles.destroy();
@@ -490,19 +521,21 @@ async function exportScreenshot(
 		label: "Export Staging Buffer",
 	});
 
-	const currentGridBuffer = state.currentSourceIsA
-		? state.gridBuffers.bufferA
-		: state.gridBuffers.bufferB;
+	const currentTextureView = state.currentSourceIsA
+		? state.gridBuffers.textureViewA
+		: state.gridBuffers.textureViewB;
+
+	const commandEncoder = device.createCommandEncoder();
+
+	copyGridBufferToTexture(state, commandEncoder, state.currentSourceIsA);
 
 	const exportBindGroup = device.createBindGroup({
 		layout: exportPipeline.pipeline.getBindGroupLayout(0),
 		entries: [
-			{ binding: 0, resource: { buffer: currentGridBuffer } },
+			{ binding: 0, resource: currentTextureView },
 			{ binding: 1, resource: { buffer: exportRenderUniform.buffer } },
 		],
 	});
-
-	const commandEncoder = device.createCommandEncoder();
 
 	const textureView = offscreenTexture.createView();
 

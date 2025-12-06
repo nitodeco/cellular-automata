@@ -13,7 +13,7 @@ struct VertexOutput {
 
 const SCALE: f32 = 1000.0;
 
-@group(0) @binding(0) var<storage, read> grid: array<u32>;
+@group(0) @binding(0) var gridTexture: texture_2d<u32>;
 @group(0) @binding(1) var<uniform> config: RenderConfig;
 
 @vertex
@@ -46,10 +46,8 @@ fn fragmentMain(input: VertexOutput) -> @location(0) vec4<f32> {
 
   let pixelX = u32(uv.x * config.width);
   let pixelY = u32(uv.y * config.height);
-  let index = pixelY * u32(config.width) + pixelX;
-
-  let valueU32 = grid[index];
-  let value = f32(valueU32) / SCALE;
+  let texel = textureLoad(gridTexture, vec2u(pixelX, pixelY), 0);
+  let value = f32(texel.r) / SCALE;
   let alpha = clamp(value / 255.0, 0.0, 1.0);
 
   let baseColor = vec3<f32>(0.039, 0.039, 0.059);
