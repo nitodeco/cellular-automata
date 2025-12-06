@@ -1,8 +1,8 @@
+import { For, Show } from "solid-js";
 import { Canvas } from "./components/Canvas";
 import { ControlDock } from "./components/ControlDock/ControlDock";
-import { InstructionsOverlay } from "./components/InstructionsOverlay";
 import { MobileWarningDialog } from "./components/MobileWarningDialog";
-import { useCanvasInteraction } from "./hooks/useCanvasInteraction";
+import { PerformancePanel } from "./components/PerformancePanel";
 import { useGridRenderer } from "./hooks/useGridRenderer";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { useSimulation } from "./hooks/useSimulation";
@@ -14,11 +14,6 @@ const App = () => {
 	const viewportHook = useViewport();
 	const simulationHook = useSimulation();
 	const isMobile = useIsMobile();
-	const canvasInteractionHook = useCanvasInteraction(
-		viewportHook.viewport,
-		simulationHook.setCellAt,
-		simulationHook.clearInteraction,
-	);
 
 	useGridRenderer(
 		() => canvasRef,
@@ -26,36 +21,49 @@ const App = () => {
 		viewportHook.viewport,
 		viewportHook.canvasSize,
 		simulationHook.slimeConfig,
-		simulationHook.interactionTarget,
+		simulationHook.useWebGPU,
+		simulationHook.gpuAvailable,
+		simulationHook.gpuInitializing,
 	);
 
 	return (
 		<div class="relative w-full h-screen overflow-hidden bg-gray-900">
-			<Canvas
-				canvasRef={(el) => {
-					canvasRef = el;
-				}}
-				width={viewportHook.canvasSize().width}
-				height={viewportHook.canvasSize().height}
-				onMouseDown={canvasInteractionHook.handleMouseDown}
-				onMouseMove={canvasInteractionHook.handleMouseMove}
-				onMouseUp={canvasInteractionHook.handleMouseUp}
-			/>
+			<For each={[simulationHook.canvasKey()]}>
+				{() => (
+					<Canvas
+						canvasRef={(el) => {
+							canvasRef = el;
+							simulationHook.setCanvasRef(el);
+						}}
+						width={viewportHook.canvasSize().width}
+						height={viewportHook.canvasSize().height}
+					/>
+				)}
+			</For>
 
 			<ControlDock
 				running={simulationHook.running}
 				speed={simulationHook.speed}
 				slimeConfig={simulationHook.slimeConfig}
+				useWebGPU={simulationHook.useWebGPU}
 				onPlayPause={simulationHook.handlePlayPause}
 				onStep={simulationHook.handleStep}
 				onClear={simulationHook.handleClear}
 				onSpeedChange={simulationHook.handleSpeedChange}
 				onSlimeConfigChange={simulationHook.handleSlimeConfigChange}
 				onRandomize={simulationHook.handleRandomize}
+				onToggleSimulationMode={simulationHook.handleToggleSimulationMode}
 			/>
 
-			<InstructionsOverlay />
-			<MobileWarningDialog isMobile={isMobile} />
+			<PerformancePanel
+				fps={simulationHook.fps}
+				frameTime={simulationHook.averageFrameTime}
+				agentCount={simulationHook.agentCount}
+			/>
+
+			<Show when={isMobile()}>
+				<MobileWarningDialog />
+			</Show>
 		</div>
 	);
 };

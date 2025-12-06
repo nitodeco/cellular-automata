@@ -11,7 +11,6 @@ export interface SlimeConfig {
 	depositAmount: number;
 	agentSpeed: number;
 	agentCount: number;
-	vortexRadius: number;
 	color: string;
 }
 
@@ -24,7 +23,6 @@ export const DEFAULT_SLIME_CONFIG: SlimeConfig = {
 	depositAmount: 50,
 	agentSpeed: 1,
 	agentCount: 5,
-	vortexRadius: 40,
 	color: "#FB00FF",
 };
 

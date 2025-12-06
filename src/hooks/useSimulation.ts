@@ -1,5 +1,11 @@
-import { createSignal, onCleanup, onMount } from "solid-js";
-import { GRID_COLS, GRID_ROWS } from "../constants";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	onCleanup,
+	onMount,
+} from "solid-js";
+import { GRID_COLS, GRID_ROWS, MAX_CPU_AGENTS } from "../constants";
 import { createEngine, type Engine } from "../core/engine";
 import { clearGrid, createGrid, type Grid } from "../core/grid";
 import {
@@ -9,6 +15,14 @@ import {
 	type SlimeConfig,
 	stepSlime,
 } from "../core/slime";
+import {
+	createGPUSimulation,
+	type GPUSimulation,
+} from "../core/webgpu/gpuSimulation";
+import {
+	loadSimulationSettings,
+	saveSimulationSettings,
+} from "../utils/storage";
 
 export function useSimulation() {
 	const bufferA = createGrid(GRID_ROWS, GRID_COLS);
@@ -16,16 +30,33 @@ export function useSimulation() {
 
 	const [currentBuffer, setCurrentBuffer] = createSignal<Grid>(bufferA);
 	const [running, setRunning] = createSignal(false);
-	const [speed, setSpeed] = createSignal(50);
-	const [slimeConfig, setSlimeConfig] =
-		createSignal<SlimeConfig>(DEFAULT_SLIME_CONFIG);
-	const [interactionTarget, setInteractionTarget] = createSignal<{
-		row: number;
-		col: number;
-	} | null>(null);
+
+	const loadedSettings = loadSimulationSettings();
+	const [speed, setSpeed] = createSignal(loadedSettings?.speed ?? 50);
+	const [slimeConfig, setSlimeConfig] = createSignal<SlimeConfig>(
+		loadedSettings?.slimeConfig ?? DEFAULT_SLIME_CONFIG,
+	);
+	const [gpuAvailable, setGpuAvailable] = createSignal(false);
+	const [useWebGPU, setUseWebGPU] = createSignal(
+		loadedSettings?.useWebGPU ?? true,
+	);
+	const [gpuInitializing, setGpuInitializing] = createSignal(true);
+	const [canvasKey, setCanvasKey] = createSignal(0);
+	const [fps, setFps] = createSignal(0);
+	const [averageFrameTime, setAverageFrameTime] = createSignal(0);
+
+	let isInitialLoad = true;
 
 	let engine: Engine | undefined;
 	const agentsRef: { current: AgentPool | null } = { current: null };
+	let gpuSimulation: GPUSimulation | null = null;
+	let canvasRef: HTMLCanvasElement | null = null;
+	let gpuInitialized = false;
+	let lastFrameTime = 0;
+
+	const agentCount = createMemo(() => {
+		return calculateAgentCount(slimeConfig());
+	});
 
 	function getOtherBuffer(current: Grid): Grid {
 		return current === bufferA ? bufferB : bufferA;
@@ -40,29 +71,46 @@ export function useSimulation() {
 		return interval === 0 ? 1 : interval;
 	}
 
+	function calculateAgentCount(config: SlimeConfig): number {
+		const rawCount = Math.floor(
+			GRID_ROWS * GRID_COLS * (config.agentCount / 100),
+		);
+
+		if (!gpuAvailable() || !useWebGPU()) {
+			return Math.min(rawCount, MAX_CPU_AGENTS);
+		}
+
+		return rawCount;
+	}
+
 	function initAgents() {
 		const config = slimeConfig();
-		const count = Math.floor(GRID_ROWS * GRID_COLS * (config.agentCount / 100));
+		const count = calculateAgentCount(config);
 		agentsRef.current = createAgentPool(count, GRID_COLS, GRID_ROWS);
 	}
 
 	function tick() {
-		const source = currentBuffer();
-		const destination = getOtherBuffer(source);
+		const startTime = performance.now();
 
-		if (agentsRef.current === null) {
-			initAgents();
-		}
+		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
+			gpuSimulation.tickAndRender();
+		} else {
+			const source = currentBuffer();
+			const destination = getOtherBuffer(source);
 
-		if (agentsRef.current) {
-			const target = interactionTarget();
-			if (target) {
-				applyVortex(target.row, target.col);
+			if (agentsRef.current === null) {
+				initAgents();
 			}
-			stepSlime(source, destination, agentsRef.current, slimeConfig());
+
+			if (agentsRef.current) {
+				stepSlime(source, destination, agentsRef.current, slimeConfig());
+			}
+
+			setCurrentBuffer(destination);
 		}
 
-		setCurrentBuffer(destination);
+		const endTime = performance.now();
+		lastFrameTime = endTime - startTime;
 	}
 
 	function handlePlayPause() {
@@ -84,12 +132,25 @@ export function useSimulation() {
 	}
 
 	function handleClear() {
-		const current = currentBuffer();
-		clearGrid(current);
-		clearGrid(getOtherBuffer(current));
-		agentsRef.current = null;
-		initAgents();
-		forceRerender();
+		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
+			gpuSimulation.clear();
+
+			const config = slimeConfig();
+			const count = calculateAgentCount(config);
+
+			gpuSimulation.reinitAgents(count);
+			gpuSimulation.render();
+		} else {
+			const current = currentBuffer();
+
+			clearGrid(current);
+			clearGrid(getOtherBuffer(current));
+
+			agentsRef.current = null;
+
+			initAgents();
+			forceRerender();
+		}
 	}
 
 	function handleSpeedChange(newSpeed: number) {
@@ -101,16 +162,30 @@ export function useSimulation() {
 		key: keyof SlimeConfig,
 		value: number | string,
 	) {
-		setSlimeConfig((prev) => ({
-			...prev,
+		const newConfig = {
+			...slimeConfig(),
 			[key]: value,
-		}));
+		};
 
-		if (key === "agentCount") {
-			const current = currentBuffer();
-			initAgents();
-			clearGrid(current);
-			clearGrid(getOtherBuffer(current));
+		setSlimeConfig(newConfig);
+
+		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
+			gpuSimulation.setConfig(newConfig);
+
+			if (key === "agentCount") {
+				const count = calculateAgentCount(newConfig);
+
+				gpuSimulation.reinitAgents(count);
+				gpuSimulation.clear();
+			}
+		} else {
+			if (key === "agentCount") {
+				const current = currentBuffer();
+
+				initAgents();
+				clearGrid(current);
+				clearGrid(getOtherBuffer(current));
+			}
 		}
 	}
 
@@ -129,9 +204,8 @@ export function useSimulation() {
 			Math.round((Math.random() * (5 - 0.1) + 0.1) * 100) / 100;
 		const randomAgentCount =
 			Math.round((Math.random() * (20 - 0.5) + 0.5) * 100) / 100;
-		const randomVortexRadius = Math.floor(Math.random() * (100 - 10 + 1)) + 10;
 
-		setSlimeConfig({
+		const newConfig: SlimeConfig = {
 			sensorAngle: randomSensorAngle,
 			turnAngle: randomTurnAngle,
 			sensorDist: randomSensorDist,
@@ -140,56 +214,136 @@ export function useSimulation() {
 			depositAmount: randomDepositAmount,
 			agentSpeed: randomAgentSpeed,
 			agentCount: randomAgentCount,
-			vortexRadius: randomVortexRadius,
 			color: currentColor,
-		});
+		};
 
-		const current = currentBuffer();
-		initAgents();
-		clearGrid(current);
-		clearGrid(getOtherBuffer(current));
-		forceRerender();
+		setSlimeConfig(newConfig);
+
+		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
+			gpuSimulation.setConfig(newConfig);
+
+			const count = calculateAgentCount(newConfig);
+
+			gpuSimulation.reinitAgents(count);
+			gpuSimulation.clear();
+			gpuSimulation.render();
+		} else {
+			const current = currentBuffer();
+
+			initAgents();
+			clearGrid(current);
+			clearGrid(getOtherBuffer(current));
+			forceRerender();
+		}
 	}
 
-	function applyVortex(row: number, col: number) {
-		const radius = slimeConfig().vortexRadius;
-		const squaredRadius = radius * radius;
-		const agents = agentsRef.current;
-
-		if (agents === null) {
+	async function initGPU() {
+		if (gpuInitialized || !canvasRef) {
 			return;
 		}
 
-		for (let agentIndex = 0; agentIndex < agents.count; agentIndex++) {
-			const agentX = agents.x[agentIndex];
-			const agentY = agents.y[agentIndex];
-			const deltaX = agentX - col;
-			const deltaY = agentY - row;
-			const distanceSquared = deltaX * deltaX + deltaY * deltaY;
+		gpuInitialized = true;
 
-			if (distanceSquared < squaredRadius) {
-				const angleToAgent = Math.atan2(deltaY, deltaX);
-				// PI/2 is pure orbit, 0 is pure repulsion. PI/4 mixes both for a spiraling repulsion.
-				agents.angle[agentIndex] = angleToAgent + Math.PI / 4;
+		const config = slimeConfig();
+		const agentCount = Math.floor(
+			GRID_ROWS * GRID_COLS * (config.agentCount / 100),
+		);
+
+		gpuSimulation = await createGPUSimulation(
+			GRID_COLS,
+			GRID_ROWS,
+			agentCount,
+			config,
+		);
+
+		if (gpuSimulation) {
+			const canvasConfigured = gpuSimulation.configureCanvas(canvasRef);
+
+			if (canvasConfigured) {
+				setGpuAvailable(true);
+				setGpuInitializing(false);
+
+				console.log("WebGPU acceleration enabled");
+			} else {
+				gpuSimulation.destroy();
+				gpuSimulation = null;
+
+				setUseWebGPU(false);
+				setGpuInitializing(false);
+
+				console.log(
+					"WebGPU canvas configuration failed, using CPU fallback (max 50k agents)",
+				);
 			}
+		} else {
+			setUseWebGPU(false);
+			setGpuInitializing(false);
+
+			console.log("WebGPU not available, using CPU fallback (max 50k agents)");
 		}
 	}
 
-	function setCellAt(row: number, col: number, _value: number) {
-		setInteractionTarget({ row, col });
-		applyVortex(row, col);
+	function handleToggleSimulationMode() {
+		const currentMode = useWebGPU();
+		setUseWebGPU(!currentMode);
+		setCanvasKey((key) => key + 1);
+
+		if (!currentMode) {
+			if (gpuSimulation) {
+				gpuSimulation.destroy();
+				gpuSimulation = null;
+			}
+			gpuInitialized = false;
+			setGpuAvailable(false);
+			setGpuInitializing(true);
+		} else {
+			setGpuInitializing(false);
+		}
 	}
 
-	function clearInteraction() {
-		setInteractionTarget(null);
+	function setCanvasRef(canvas: HTMLCanvasElement) {
+		canvasRef = canvas;
+		if (useWebGPU()) {
+			initGPU();
+		} else {
+			setGpuInitializing(false);
+		}
 	}
+
+	createEffect(() => {
+		const currentSpeed = speed();
+		const currentSlimeConfig = slimeConfig();
+		const currentUseWebGPU = useWebGPU();
+
+		if (isInitialLoad) {
+			return;
+		}
+
+		saveSimulationSettings({
+			speed: currentSpeed,
+			slimeConfig: currentSlimeConfig,
+			useWebGPU: currentUseWebGPU,
+		});
+	});
 
 	onMount(() => {
+		isInitialLoad = false;
+
 		engine = createEngine(tick);
 		engine.setSpeed(speedToInterval(speed()));
 		initAgents();
+
+		const metricsInterval = setInterval(() => {
+			if (engine) {
+				setFps(engine.getFps());
+			}
+			setAverageFrameTime(lastFrameTime);
+		}, 500);
+
 		onCleanup(() => {
 			engine?.stop();
+			gpuSimulation?.destroy();
+			clearInterval(metricsInterval);
 		});
 	});
 
@@ -198,14 +352,20 @@ export function useSimulation() {
 		running,
 		speed,
 		slimeConfig,
+		gpuAvailable,
+		useWebGPU,
+		gpuInitializing,
+		canvasKey,
+		fps,
+		averageFrameTime,
+		agentCount,
 		handlePlayPause,
 		handleStep,
 		handleClear,
 		handleSpeedChange,
 		handleSlimeConfigChange,
 		handleRandomize,
-		setCellAt,
-		clearInteraction,
-		interactionTarget,
+		handleToggleSimulationMode,
+		setCanvasRef,
 	};
 }

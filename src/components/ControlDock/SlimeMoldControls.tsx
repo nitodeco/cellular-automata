@@ -121,16 +121,6 @@ export const SlimeMoldControls = (props: SlimeMoldControlsProps) => {
 				step={0.5}
 				onChange={(value) => props.onSlimeConfigChange("agentCount", value)}
 			/>
-
-			<SliderControl
-				label="Vortex Radius"
-				displayValue={`${config().vortexRadius}px`}
-				value={config().vortexRadius}
-				min={10}
-				max={100}
-				step={1}
-				onChange={(value) => props.onSlimeConfigChange("vortexRadius", value)}
-			/>
 		</div>
 	);
 };

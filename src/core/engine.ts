@@ -3,6 +3,7 @@ export interface Engine {
 	stop: () => void;
 	setSpeed: (intervalMs: number) => void;
 	isRunning: () => boolean;
+	getFps: () => number;
 }
 
 export function createEngine(tick: () => void): Engine {
@@ -11,6 +12,9 @@ export function createEngine(tick: () => void): Engine {
 	let accumulator = 0;
 	let targetInterval = 100;
 	let animationFrameId: number | null = null;
+	let fps = 0;
+	let frames = 0;
+	let lastFpsUpdate = 0;
 
 	const MAX_TICKS_PER_FRAME = 4;
 
@@ -23,7 +27,16 @@ export function createEngine(tick: () => void): Engine {
 		lastTime = currentTime;
 		accumulator += deltaTime;
 
+		frames++;
+
+		if (currentTime - lastFpsUpdate >= 1000) {
+			fps = frames;
+			frames = 0;
+			lastFpsUpdate = currentTime;
+		}
+
 		let ticksThisFrame = 0;
+
 		while (
 			accumulator >= targetInterval &&
 			ticksThisFrame < MAX_TICKS_PER_FRAME
@@ -71,5 +84,9 @@ export function createEngine(tick: () => void): Engine {
 		return running;
 	}
 
-	return { start, stop, setSpeed, isRunning };
+	function getFps() {
+		return fps;
+	}
+
+	return { start, stop, setSpeed, isRunning, getFps };
 }

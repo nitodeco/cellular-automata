@@ -1,11 +1,5 @@
-import { onCleanup, onMount } from "solid-js";
-import {
-	CELL_SIZE,
-	GRID_COLS,
-	GRID_ROWS,
-	TOTAL_HEIGHT,
-	TOTAL_WIDTH,
-} from "../constants";
+import { type Accessor, onCleanup, onMount } from "solid-js";
+import { GRID_COLS, GRID_ROWS, TOTAL_HEIGHT, TOTAL_WIDTH } from "../constants";
 import type { Grid } from "../core/grid";
 import type { SlimeConfig } from "../core/slime";
 import { hexToRgb } from "../utils/color";
@@ -20,7 +14,9 @@ export function useGridRenderer(
 	viewport: () => Viewport,
 	canvasSize: () => { width: number; height: number },
 	slimeConfig: () => SlimeConfig,
-	interactionTarget: () => { row: number; col: number } | null,
+	useWebGPU: Accessor<boolean>,
+	gpuAvailable: Accessor<boolean>,
+	gpuInitializing: Accessor<boolean>,
 ) {
 	const offscreen = new OffscreenCanvas(GRID_COLS, GRID_ROWS);
 	const offscreenCtx = offscreen.getContext("2d", {
@@ -30,6 +26,10 @@ export function useGridRenderer(
 	const data32 = imageData ? new Uint32Array(imageData.data.buffer) : null;
 
 	function renderGrid() {
+		if (gpuInitializing() || (useWebGPU() && gpuAvailable())) {
+			return;
+		}
+
 		const canvas = canvasRef();
 		if (!canvas) {
 			return;
@@ -79,20 +79,6 @@ export function useGridRenderer(
 				TOTAL_WIDTH * zoom,
 				TOTAL_HEIGHT * zoom,
 			);
-		}
-
-		const target = interactionTarget();
-		if (target) {
-			const { col, row } = target;
-			const radius = slimeConfig().vortexRadius * CELL_SIZE * zoom;
-			const centerX = x + (col * CELL_SIZE + CELL_SIZE / 2) * zoom;
-			const centerY = y + (row * CELL_SIZE + CELL_SIZE / 2) * zoom;
-
-			ctx.beginPath();
-			ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-			ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
-			ctx.lineWidth = 2;
-			ctx.stroke();
 		}
 	}
 

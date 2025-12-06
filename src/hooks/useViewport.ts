@@ -7,7 +7,10 @@ export interface Viewport {
 }
 
 export function useViewport() {
-	// Static viewport, no zooming or panning
+	/*
+	 * We want the viewport to be centered with 0 zoom
+	 * because the simulation area fills the viewport exactly
+	 */
 	const [viewport, setViewport] = createSignal<Viewport>({
 		x: 0,
 		y: 0,

@@ -11,6 +11,7 @@
       "devDependencies": {
         "@biomejs/biome": "2.3.8",
         "@tailwindcss/vite": "^4.1.17",
+        "@webgpu/types": "^0.1.67",
         "autoprefixer": "^10.4.22",
         "postcss": "^8.5.6",
         "tailwindcss": "^4.1.17",
@@ -222,6 +223,8 @@
     "@types/babel__traverse": ["@types/babel__traverse@7.28.0", "", { "dependencies": { "@babel/types": "^7.28.2" } }, "sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q=="],
 
     "@types/estree": ["@types/estree@1.0.8", "", {}, "sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w=="],
+
+    "@webgpu/types": ["@webgpu/types@0.1.67", "", {}, "sha512-uk53+2ECGUkWoDFez/hymwpRfdgdIn6y1ref70fEecGMe5607f4sozNFgBk0oxlr7j2CRGWBEc3IBYMmFdGGTQ=="],
 
     "autoprefixer": ["autoprefixer@10.4.22", "", { "dependencies": { "browserslist": "^4.27.0", "caniuse-lite": "^1.0.30001754", "fraction.js": "^5.3.4", "normalize-range": "^0.1.2", "picocolors": "^1.1.1", "postcss-value-parser": "^4.2.0" }, "peerDependencies": { "postcss": "^8.1.0" }, "bin": { "autoprefixer": "bin/autoprefixer" } }, "sha512-ARe0v/t9gO28Bznv6GgqARmVqcWOV3mfgUPn9becPHMiD3o9BwlRgaeccZnwTpZ7Zwqrm+c1sUSsMxIzQzc8Xg=="],
 

@@ -11,12 +11,14 @@ interface Props {
 	running: () => boolean;
 	speed: () => number;
 	slimeConfig: () => SlimeConfig;
+	useWebGPU: () => boolean;
 	onPlayPause: () => void;
 	onStep: () => void;
 	onClear: () => void;
 	onSpeedChange: (speed: number) => void;
 	onSlimeConfigChange: (key: keyof SlimeConfig, value: number | string) => void;
 	onRandomize: () => void;
+	onToggleSimulationMode: () => void;
 }
 
 const STORAGE_KEY = "controldock-collapsed";
@@ -86,6 +88,15 @@ export const ControlDock = (props: Props) => {
 								props.onSlimeConfigChange("color", color)
 							}
 						/>
+						<Button
+							onClick={props.onToggleSimulationMode}
+							class="px-4 py-2 min-w-[100px] flex items-center justify-center gap-2"
+							aria-label="Toggle simulation mode"
+						>
+							<span class="text-sm font-mono">
+								{props.useWebGPU() ? "GPU" : "CPU"}
+							</span>
+						</Button>
 						<Button
 							onClick={props.onRandomize}
 							class="px-4 py-2 min-w-[48px] flex items-center justify-center"

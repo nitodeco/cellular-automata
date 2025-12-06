@@ -15,6 +15,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.8",
+		"@webgpu/types": "^0.1.67",
 		"@tailwindcss/vite": "^4.1.17",
 		"autoprefixer": "^10.4.22",
 		"postcss": "^8.5.6",
