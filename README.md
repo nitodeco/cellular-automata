@@ -66,6 +66,10 @@ WebGPU is required for GPU acceleration. Check the [MDN docs](https://developer.
 
 The simulation automatically falls back to CPU mode when WebGPU is unavailable, although at significantly reduced performance and a fixed limit of 50,000 agents.
 
+## Attribution
+
+Thanks to [Sebastian Lague](https://www.youtube.com/@SebastianLague) for inspiring me to create this project.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE). Feel free to use, modify, and distribute the code as you see fit.
