@@ -416,9 +416,9 @@ export function useSimulation() {
 				const stream = canvasRef.captureStream(actualFps);
 
 				const codecOptions = [
-					{ mimeType: "video/webm; codecs=vp9", bitrate: 30_000_000 },
-					{ mimeType: "video/webm; codecs=vp8", bitrate: 20_000_000 },
-					{ mimeType: "video/webm", bitrate: 15_000_000 },
+					{ mimeType: "video/webm; codecs=vp9", bitrate: 10_000_000 },
+					{ mimeType: "video/webm; codecs=vp8", bitrate: 8_000_000 },
+					{ mimeType: "video/webm", bitrate: 5_000_000 },
 				];
 
 				let selectedCodec = codecOptions[codecOptions.length - 1];
