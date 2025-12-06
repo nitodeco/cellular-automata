@@ -412,15 +412,27 @@ export function useSimulation() {
 			if (!canvasRef) return;
 
 			try {
-				const stream = canvasRef.captureStream(60);
+				const actualFps = Math.min(60, fps() || 60);
+				const stream = canvasRef.captureStream(actualFps);
 
-				const mimeType = MediaRecorder.isTypeSupported("video/webm; codecs=vp9")
-					? "video/webm; codecs=vp9"
-					: "video/webm";
+				const codecOptions = [
+					{ mimeType: "video/webm; codecs=vp9", bitrate: 30_000_000 },
+					{ mimeType: "video/webm; codecs=vp8", bitrate: 20_000_000 },
+					{ mimeType: "video/webm", bitrate: 15_000_000 },
+				];
+
+				let selectedCodec = codecOptions[codecOptions.length - 1];
+				for (const codec of codecOptions) {
+					if (MediaRecorder.isTypeSupported(codec.mimeType)) {
+						selectedCodec = codec;
+						break;
+					}
+				}
 
 				mediaRecorder = new MediaRecorder(stream, {
-					mimeType,
-					videoBitsPerSecond: 8_000_000, // 8 Mbps
+					mimeType: selectedCodec.mimeType,
+					videoBitsPerSecond: selectedCodec.bitrate,
+					audioBitsPerSecond: 0,
 				});
 
 				recordedChunks = [];
@@ -432,7 +444,9 @@ export function useSimulation() {
 				};
 
 				mediaRecorder.onstop = () => {
-					const blob = new Blob(recordedChunks, { type: mimeType });
+					const blob = new Blob(recordedChunks, {
+						type: selectedCodec.mimeType,
+					});
 					const url = URL.createObjectURL(blob);
 					const link = document.createElement("a");
 					link.href = url;
@@ -442,7 +456,7 @@ export function useSimulation() {
 					setIsRecording(false);
 				};
 
-				mediaRecorder.start();
+				mediaRecorder.start(1000);
 				setIsRecording(true);
 			} catch (err) {
 				console.error("Error starting recording:", err);
