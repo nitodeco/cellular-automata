@@ -28,6 +28,7 @@ export interface GPUSimulation {
 	reinitAgents(count: number): void;
 	destroy(): void;
 	configureCanvas(canvas: HTMLCanvasElement): boolean;
+	exportScreenshot(width: number, height: number): Promise<Uint8Array>;
 }
 
 interface CachedBindGroups {
@@ -47,6 +48,7 @@ interface GPUSimulationState {
 	renderUniform: ConfigUniform;
 	computePipelines: ComputePipelines;
 	renderPipeline: RenderPipeline;
+	exportPipeline: RenderPipeline;
 	cachedBindGroups: CachedBindGroups;
 	canvasContext: GPUCanvasContext | null;
 	width: number;
@@ -162,6 +164,7 @@ export async function createGPUSimulation(
 	const renderUniform = createRenderUniform(device);
 	const computePipelines = createComputePipelines(device);
 	const renderPipeline = createRenderPipeline(device);
+	const exportPipeline = createRenderPipeline(device, "rgba8unorm");
 
 	const cachedBindGroups = createCachedBindGroups(
 		device,
@@ -181,6 +184,7 @@ export async function createGPUSimulation(
 		renderUniform,
 		computePipelines,
 		renderPipeline,
+		exportPipeline,
 		cachedBindGroups,
 		canvasContext: null,
 		width,
@@ -203,6 +207,8 @@ export async function createGPUSimulation(
 		destroy: () => destroy(state),
 		configureCanvas: (canvas: HTMLCanvasElement) =>
 			configureCanvas(state, canvas),
+		exportScreenshot: (width: number, height: number) =>
+			exportScreenshot(state, width, height),
 	};
 }
 
@@ -434,4 +440,114 @@ function configureCanvas(
 
 	state.canvasContext = canvasContext;
 	return true;
+}
+
+async function exportScreenshot(
+	state: GPUSimulationState,
+	targetWidth: number,
+	targetHeight: number,
+): Promise<Uint8Array> {
+	const { device } = state.context;
+
+	const { r, g, b } = hexToRgb(state.currentConfig.color);
+	const colorR = r / 255;
+	const colorG = g / 255;
+	const colorB = b / 255;
+
+	/*
+	 * Specific render pipeline for export,
+	 * ensures we get RGBA bytes regardless of the systems preferred canvas format
+	 */
+	const exportPipeline = state.exportPipeline;
+
+	const exportRenderUniform = createRenderUniform(device);
+	updateRenderUniform(
+		device,
+		exportRenderUniform,
+		state.width,
+		state.height,
+		colorR,
+		colorG,
+		colorB,
+	);
+
+	const offscreenTexture = device.createTexture({
+		size: { width: targetWidth, height: targetHeight },
+		format: exportPipeline.format,
+		usage:
+			GPUTextureUsage.RENDER_ATTACHMENT |
+			GPUTextureUsage.COPY_SRC |
+			GPUTextureUsage.TEXTURE_BINDING,
+		label: "Export Offscreen Texture",
+	});
+
+	const bytesPerRow = Math.ceil((targetWidth * 4) / 256) * 256;
+	const bufferSize = bytesPerRow * targetHeight;
+
+	const stagingBuffer = device.createBuffer({
+		size: bufferSize,
+		usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+		label: "Export Staging Buffer",
+	});
+
+	const currentGridBuffer = state.currentSourceIsA
+		? state.gridBuffers.bufferA
+		: state.gridBuffers.bufferB;
+
+	const exportBindGroup = device.createBindGroup({
+		layout: exportPipeline.pipeline.getBindGroupLayout(0),
+		entries: [
+			{ binding: 0, resource: { buffer: currentGridBuffer } },
+			{ binding: 1, resource: { buffer: exportRenderUniform.buffer } },
+		],
+	});
+
+	const commandEncoder = device.createCommandEncoder();
+
+	const textureView = offscreenTexture.createView();
+
+	const renderPass = commandEncoder.beginRenderPass({
+		colorAttachments: [
+			{
+				view: textureView,
+				clearValue: { r: 0.039, g: 0.039, b: 0.059, a: 1.0 },
+				loadOp: "clear",
+				storeOp: "store",
+			},
+		],
+	});
+
+	renderPass.setPipeline(exportPipeline.pipeline);
+	renderPass.setBindGroup(0, exportBindGroup);
+	renderPass.draw(3);
+	renderPass.end();
+
+	commandEncoder.copyTextureToBuffer(
+		{ texture: offscreenTexture },
+		{ buffer: stagingBuffer, bytesPerRow },
+		{ width: targetWidth, height: targetHeight },
+	);
+
+	device.queue.submit([commandEncoder.finish()]);
+
+	await stagingBuffer.mapAsync(GPUMapMode.READ);
+	const mappedRange = stagingBuffer.getMappedRange();
+	const rawData = new Uint8Array(mappedRange);
+
+	const pixelData = new Uint8Array(targetWidth * targetHeight * 4);
+	for (let row = 0; row < targetHeight; row++) {
+		const srcOffset = row * bytesPerRow;
+		const dstOffset = row * targetWidth * 4;
+		pixelData.set(
+			rawData.subarray(srcOffset, srcOffset + targetWidth * 4),
+			dstOffset,
+		);
+	}
+
+	stagingBuffer.unmap();
+	stagingBuffer.destroy();
+	offscreenTexture.destroy();
+	exportRenderUniform.buffer.destroy();
+
+	return pixelData;
 }

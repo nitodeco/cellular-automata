@@ -44,6 +44,7 @@ export function useSimulation() {
 	const [canvasKey, setCanvasKey] = createSignal(0);
 	const [fps, setFps] = createSignal(0);
 	const [averageFrameTime, setAverageFrameTime] = createSignal(0);
+	const [isExporting, setIsExporting] = createSignal(false);
 
 	let isInitialLoad = true;
 
@@ -301,6 +302,95 @@ export function useSimulation() {
 		}
 	}
 
+	async function handleExportScreenshot(width: number, height: number) {
+		if (isExporting()) {
+			return;
+		}
+
+		setIsExporting(true);
+
+		try {
+			if (gpuAvailable() && useWebGPU() && gpuSimulation) {
+				const pixelData = await gpuSimulation.exportScreenshot(width, height);
+				downloadPixelDataAsPng(pixelData, width, height);
+			} else if (canvasRef) {
+				downloadCanvasAsPng(canvasRef, width, height);
+			}
+		} catch (error) {
+			console.error("Failed to export screenshot:", error);
+		} finally {
+			setIsExporting(false);
+		}
+	}
+
+	function downloadPixelDataAsPng(
+		pixelData: Uint8Array,
+		width: number,
+		height: number,
+	) {
+		const canvas = document.createElement("canvas");
+		canvas.width = width;
+		canvas.height = height;
+
+		const context = canvas.getContext("2d");
+		if (!context) {
+			console.error("Failed to get 2D context for export canvas");
+			return;
+		}
+
+		const imageData = context.createImageData(width, height);
+		imageData.data.set(pixelData);
+		context.putImageData(imageData, 0, 0);
+
+		canvas.toBlob((blob) => {
+			if (!blob) {
+				console.error("Failed to create blob from canvas");
+				return;
+			}
+
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement("a");
+			link.href = url;
+			link.download = `slime-mold-${width}x${height}-${Date.now()}.png`;
+			link.click();
+
+			URL.revokeObjectURL(url);
+		}, "image/png");
+	}
+
+	function downloadCanvasAsPng(
+		sourceCanvas: HTMLCanvasElement,
+		targetWidth: number,
+		targetHeight: number,
+	) {
+		const exportCanvas = document.createElement("canvas");
+		exportCanvas.width = targetWidth;
+		exportCanvas.height = targetHeight;
+
+		const context = exportCanvas.getContext("2d");
+		if (!context) {
+			console.error("Failed to get 2D context for export canvas");
+			return;
+		}
+
+		context.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
+
+		exportCanvas.toBlob((blob) => {
+			if (!blob) {
+				console.error("Failed to create blob from canvas");
+				return;
+			}
+
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement("a");
+			link.href = url;
+			link.download = `slime-mold-${targetWidth}x${targetHeight}-${Date.now()}.png`;
+			link.click();
+
+			URL.revokeObjectURL(url);
+		}, "image/png");
+	}
+
 	function setCanvasRef(canvas: HTMLCanvasElement) {
 		canvasRef = canvas;
 		if (useWebGPU()) {
@@ -359,6 +449,7 @@ export function useSimulation() {
 		fps,
 		averageFrameTime,
 		agentCount,
+		isExporting,
 		handlePlayPause,
 		handleStep,
 		handleClear,
@@ -366,6 +457,7 @@ export function useSimulation() {
 		handleSlimeConfigChange,
 		handleRandomize,
 		handleToggleSimulationMode,
+		handleExportScreenshot,
 		setCanvasRef,
 	};
 }

@@ -3,6 +3,7 @@ import type { SlimeConfig } from "../../core/slime";
 import { Button } from "../Button";
 import { CollapseButton } from "./CollapseButton";
 import { ColorControl } from "./ColorControl";
+import { ExportControl } from "./ExportControl";
 import { PlaybackControls } from "./PlaybackControls";
 import { SlimeMoldControls } from "./SlimeMoldControls";
 import { SpeedControl } from "./SpeedControl";
@@ -12,6 +13,9 @@ interface Props {
 	speed: () => number;
 	slimeConfig: () => SlimeConfig;
 	useWebGPU: () => boolean;
+	viewportWidth: number;
+	viewportHeight: number;
+	isExporting: () => boolean;
 	onPlayPause: () => void;
 	onStep: () => void;
 	onClear: () => void;
@@ -19,6 +23,7 @@ interface Props {
 	onSlimeConfigChange: (key: keyof SlimeConfig, value: number | string) => void;
 	onRandomize: () => void;
 	onToggleSimulationMode: () => void;
+	onExport: (width: number, height: number) => void;
 }
 
 const STORAGE_KEY = "controldock-collapsed";
@@ -69,9 +74,9 @@ export const ControlDock = (props: Props) => {
 				}`}
 			>
 				<div
-					class={`pointer-events-auto bg-gray-800/95 backdrop-blur-sm border-2 border-gray-600 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.6)] pt-2 pb-4 px-4 flex flex-col gap-3 w-full max-h-[80vh] overflow-y-auto`}
+					class={`pointer-events-auto bg-gray-800/95 border-2 border-gray-600 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.6)] pt-2 pb-4 px-4 flex flex-col gap-3 w-full`}
 				>
-					<div class="flex flex-row flex-wrap items-center justify-center gap-4 md:gap-8">
+					<div class="flex flex-row flex-wrap items-center justify-center gap-2 md:gap-4 shrink-0 z-20 relative">
 						<PlaybackControls
 							running={props.running}
 							onPlayPause={props.onPlayPause}
@@ -90,7 +95,7 @@ export const ControlDock = (props: Props) => {
 						/>
 						<Button
 							onClick={props.onToggleSimulationMode}
-							class="px-4 py-2 min-w-[100px] flex items-center justify-center gap-2"
+							class="px-2 py-2 min-w-[64px] flex items-center justify-center"
 							aria-label="Toggle simulation mode"
 						>
 							<span class="text-sm font-mono">
@@ -104,6 +109,12 @@ export const ControlDock = (props: Props) => {
 						>
 							<i class="hn hn-shuffle w-5 h-5" />
 						</Button>
+						<ExportControl
+							viewportWidth={props.viewportWidth}
+							viewportHeight={props.viewportHeight}
+							onExport={props.onExport}
+							isExporting={props.isExporting}
+						/>
 					</div>
 
 					<SlimeMoldControls

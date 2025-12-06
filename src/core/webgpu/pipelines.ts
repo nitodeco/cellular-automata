@@ -44,9 +44,10 @@ export function createComputePipelines(device: GPUDevice): ComputePipelines {
 	return { diffuseDecay, agentMoveDeposit };
 }
 
-export function createRenderPipeline(device: GPUDevice): RenderPipeline {
-	const format = navigator.gpu.getPreferredCanvasFormat();
-
+export function createRenderPipeline(
+	device: GPUDevice,
+	format: GPUTextureFormat = navigator.gpu.getPreferredCanvasFormat(),
+): RenderPipeline {
 	const renderModule = device.createShaderModule({
 		code: renderShader,
 		label: "Render Shader",
