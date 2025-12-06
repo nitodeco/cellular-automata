@@ -1,16 +1,16 @@
 export interface RGB {
-	r: number;
-	g: number;
-	b: number;
+	red: number;
+	green: number;
+	blue: number;
 }
 
 export function hexToRgb(hex: string): RGB {
 	const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
 	return result
 		? {
-				r: Number.parseInt(result[1], 16),
-				g: Number.parseInt(result[2], 16),
-				b: Number.parseInt(result[3], 16),
+				red: Number.parseInt(result[1], 16),
+				green: Number.parseInt(result[2], 16),
+				blue: Number.parseInt(result[3], 16),
 			}
-		: { r: 0, g: 255, b: 0 };
+		: { red: 0, green: 255, blue: 0 };
 }

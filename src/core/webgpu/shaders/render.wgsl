@@ -1,9 +1,8 @@
 struct RenderConfig {
-  width: f32,
-  height: f32,
-  colorR: f32,
-  colorG: f32,
-  colorB: f32,
+  size: vec2<f32>,
+  lowColor: vec4<f32>,
+  midColor: vec4<f32>,
+  highColor: vec4<f32>,
 }
 
 struct VertexOutput {
@@ -44,15 +43,26 @@ fn fragmentMain(input: VertexOutput) -> @location(0) vec4<f32> {
     return vec4<f32>(0.039, 0.039, 0.059, 1.0);
   }
 
-  let pixelX = u32(uv.x * config.width);
-  let pixelY = u32(uv.y * config.height);
+  let pixelX = u32(uv.x * config.size.x);
+  let pixelY = u32(uv.y * config.size.y);
   let texel = textureLoad(gridTexture, vec2u(pixelX, pixelY), 0);
   let value = f32(texel.r) / SCALE;
-  let alpha = clamp(value / 255.0, 0.0, 1.0);
+  let intensity = clamp(value / 255.0, 0.0, 1.0);
+  let curved = pow(intensity, 2.2);
 
   let baseColor = vec3<f32>(0.039, 0.039, 0.059);
-  let slimeColor = vec3<f32>(config.colorR, config.colorG, config.colorB);
-  let finalColor = mix(baseColor, slimeColor, alpha);
+  var gradientColor: vec3<f32>;
+  if (curved < 0.5) {
+    gradientColor = mix(config.lowColor.rgb, config.midColor.rgb, curved * 2.0);
+  } else {
+    gradientColor = mix(
+      config.midColor.rgb,
+      config.highColor.rgb,
+      (curved - 0.5) * 2.0
+    );
+  }
+
+  let finalColor = mix(baseColor, gradientColor, curved);
 
   return vec4<f32>(finalColor, 1.0);
 }

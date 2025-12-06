@@ -1,11 +1,12 @@
 import { createEffect, createSignal, onMount } from "solid-js";
-import type { SlimeConfig } from "../../core/slime";
+import type { SlimeConfig, SpawnPattern } from "../../core/slime";
 import { Button } from "../Button";
 import { CollapseButton } from "./CollapseButton";
 import { ColorControl } from "./ColorControl";
 import { ExportControl } from "./ExportControl";
 import { PlaybackControls } from "./PlaybackControls";
 import { SlimeMoldControls } from "./SlimeMoldControls";
+import { SpawnPatternControl } from "./SpawnPatternControl";
 import { SpeedControl } from "./SpeedControl";
 
 interface Props {
@@ -65,7 +66,7 @@ export const ControlDock = (props: Props) => {
 	return (
 		<div class="absolute bottom-0 left-0 w-full z-10 flex justify-center pointer-events-none px-4">
 			<div
-				class={`relative w-full max-w-[95vw] md:max-w-4xl ${
+				class={`relative w-full max-w-[95vw] md:max-w-6xl ${
 					isExpanding()
 						? "dock-expand"
 						: isCollapsing()
@@ -90,9 +91,15 @@ export const ControlDock = (props: Props) => {
 							onSpeedChange={props.onSpeedChange}
 						/>
 						<ColorControl
-							color={() => props.slimeConfig().color}
-							onColorChange={(color) =>
-								props.onSlimeConfigChange("color", color)
+							selectedPreset={() => props.slimeConfig().colorPreset}
+							onPresetChange={(presetName) =>
+								props.onSlimeConfigChange("colorPreset", presetName)
+							}
+						/>
+						<SpawnPatternControl
+							spawnPattern={() => props.slimeConfig().spawnPattern}
+							onSpawnPatternChange={(pattern: SpawnPattern) =>
+								props.onSlimeConfigChange("spawnPattern", pattern)
 							}
 						/>
 						<Button

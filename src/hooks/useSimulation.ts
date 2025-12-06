@@ -10,6 +10,7 @@ import { createEngine, type Engine } from "../core/engine";
 import { clearGrid, createGrid, type Grid } from "../core/grid";
 import {
 	type AgentPool,
+	COLOR_PRESET_NAMES,
 	createAgentPool,
 	DEFAULT_SLIME_CONFIG,
 	type SlimeConfig,
@@ -55,7 +56,12 @@ export function useSimulation() {
 
 	const [speed, setSpeed] = createSignal(initialSettings?.speed ?? 50);
 	const [slimeConfig, setSlimeConfig] = createSignal<SlimeConfig>(
-		initialSettings?.slimeConfig ?? DEFAULT_SLIME_CONFIG,
+		initialSettings?.slimeConfig
+			? {
+					...DEFAULT_SLIME_CONFIG,
+					...initialSettings.slimeConfig,
+				}
+			: DEFAULT_SLIME_CONFIG,
 	);
 	const [gpuAvailable, setGpuAvailable] = createSignal(false);
 	const [useWebGPU, setUseWebGPU] = createSignal(
@@ -111,7 +117,12 @@ export function useSimulation() {
 	function initAgents() {
 		const config = slimeConfig();
 		const count = calculateAgentCount(config);
-		agentsRef.current = createAgentPool(count, GRID_COLS, GRID_ROWS);
+		agentsRef.current = createAgentPool(
+			count,
+			GRID_COLS,
+			GRID_ROWS,
+			config.spawnPattern,
+		);
 	}
 
 	function tick() {
@@ -163,7 +174,7 @@ export function useSimulation() {
 			const config = slimeConfig();
 			const count = calculateAgentCount(config);
 
-			gpuSimulation.reinitAgents(count);
+			gpuSimulation.reinitAgents(count, config.spawnPattern);
 			gpuSimulation.render();
 		} else {
 			const current = currentBuffer();
@@ -194,17 +205,19 @@ export function useSimulation() {
 
 		setSlimeConfig(newConfig);
 
+		const requiresReinit = key === "agentCount" || key === "spawnPattern";
+
 		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
 			gpuSimulation.setConfig(newConfig);
 
-			if (key === "agentCount") {
+			if (requiresReinit) {
 				const count = calculateAgentCount(newConfig);
 
-				gpuSimulation.reinitAgents(count);
+				gpuSimulation.reinitAgents(count, newConfig.spawnPattern);
 				gpuSimulation.clear();
 			}
 		} else {
-			if (key === "agentCount") {
+			if (requiresReinit) {
 				const current = currentBuffer();
 
 				initAgents();
@@ -215,7 +228,7 @@ export function useSimulation() {
 	}
 
 	function handleRandomize() {
-		const currentColor = slimeConfig().color;
+		const currentConfig = slimeConfig();
 		const randomSensorAngle =
 			Math.round(((Math.random() * 180 * Math.PI) / 180) * 100) / 100;
 		const randomTurnAngle =
@@ -229,6 +242,8 @@ export function useSimulation() {
 			Math.round((Math.random() * (5 - 0.1) + 0.1) * 100) / 100;
 		const randomAgentCount =
 			Math.round((Math.random() * (20 - 0.5) + 0.5) * 100) / 100;
+		const randomPreset =
+			COLOR_PRESET_NAMES[Math.floor(Math.random() * COLOR_PRESET_NAMES.length)];
 
 		const newConfig: SlimeConfig = {
 			sensorAngle: randomSensorAngle,
@@ -239,7 +254,8 @@ export function useSimulation() {
 			depositAmount: randomDepositAmount,
 			agentSpeed: randomAgentSpeed,
 			agentCount: randomAgentCount,
-			color: currentColor,
+			colorPreset: randomPreset,
+			spawnPattern: currentConfig.spawnPattern,
 		};
 
 		setSlimeConfig(newConfig);
@@ -249,7 +265,7 @@ export function useSimulation() {
 
 			const count = calculateAgentCount(newConfig);
 
-			gpuSimulation.reinitAgents(count);
+			gpuSimulation.reinitAgents(count, newConfig.spawnPattern);
 			gpuSimulation.clear();
 			gpuSimulation.render();
 		} else {

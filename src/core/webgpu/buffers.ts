@@ -1,4 +1,5 @@
-import type { SlimeConfig } from "../slime";
+import type { SlimeConfig, SpawnPattern } from "../slime";
+import { generateAgentPositions } from "../spawnPatterns";
 
 export interface GridBuffers {
 	bufferA: GPUBuffer;
@@ -20,7 +21,7 @@ export interface AgentBuffers {
 
 export interface ConfigUniform {
 	buffer: GPUBuffer;
-	data: Float32Array<ArrayBuffer>;
+	data: Float32Array;
 }
 
 export function createGridBuffers(
@@ -87,6 +88,7 @@ export function createAgentBuffers(
 	count: number,
 	width: number,
 	height: number,
+	spawnPattern: SpawnPattern = "random",
 ): AgentBuffers {
 	const size = count * 4;
 
@@ -108,7 +110,7 @@ export function createAgentBuffers(
 		label: "Agent Positions Y",
 	});
 
-	const angles = device.createBuffer({
+	const anglesBuffer = device.createBuffer({
 		size,
 		usage:
 			GPUBufferUsage.STORAGE |
@@ -117,21 +119,18 @@ export function createAgentBuffers(
 		label: "Agent Angles",
 	});
 
-	const xData = new Float32Array(count);
-	const yData = new Float32Array(count);
-	const angleData = new Float32Array(count);
+	const { xPositions, yPositions, angles } = generateAgentPositions(
+		spawnPattern,
+		count,
+		width,
+		height,
+	);
 
-	for (let index = 0; index < count; index++) {
-		xData[index] = Math.random() * width;
-		yData[index] = Math.random() * height;
-		angleData[index] = Math.random() * Math.PI * 2;
-	}
+	device.queue.writeBuffer(positionsX, 0, xPositions);
+	device.queue.writeBuffer(positionsY, 0, yPositions);
+	device.queue.writeBuffer(anglesBuffer, 0, angles);
 
-	device.queue.writeBuffer(positionsX, 0, xData);
-	device.queue.writeBuffer(positionsY, 0, yData);
-	device.queue.writeBuffer(angles, 0, angleData);
-
-	return { positionsX, positionsY, angles, count };
+	return { positionsX, positionsY, angles: anglesBuffer, count };
 }
 
 export function createConfigUniform(device: GPUDevice): ConfigUniform {
@@ -174,7 +173,7 @@ export function updateConfigUniform(
 }
 
 export function createRenderUniform(device: GPUDevice): ConfigUniform {
-	const data = new Float32Array(8);
+	const data = new Float32Array(16);
 
 	const buffer = device.createBuffer({
 		size: data.byteLength,
@@ -190,17 +189,31 @@ export function updateRenderUniform(
 	renderUniform: ConfigUniform,
 	width: number,
 	height: number,
-	colorR: number,
-	colorG: number,
-	colorB: number,
+	lowColor: [number, number, number],
+	midColor: [number, number, number],
+	highColor: [number, number, number],
 ): void {
 	const data = renderUniform.data;
 
 	data[0] = width;
 	data[1] = height;
-	data[2] = colorR;
-	data[3] = colorG;
-	data[4] = colorB;
+	data[2] = 0;
+	data[3] = 0;
+
+	data[4] = lowColor[0];
+	data[5] = lowColor[1];
+	data[6] = lowColor[2];
+	data[7] = 0;
+
+	data[8] = midColor[0];
+	data[9] = midColor[1];
+	data[10] = midColor[2];
+	data[11] = 0;
+
+	data[12] = highColor[0];
+	data[13] = highColor[1];
+	data[14] = highColor[2];
+	data[15] = 0;
 
 	device.queue.writeBuffer(renderUniform.buffer, 0, data);
 }

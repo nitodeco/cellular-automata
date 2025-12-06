@@ -1,5 +1,5 @@
-import { hexToRgb } from "../../utils/color";
-import type { SlimeConfig } from "../slime";
+import type { SlimeConfig, SpawnPattern } from "../slime";
+import { getColorPresetFloats } from "../slime";
 import {
 	type AgentBuffers,
 	type ConfigUniform,
@@ -25,7 +25,7 @@ export interface GPUSimulation {
 	render(): void;
 	setConfig(config: SlimeConfig): void;
 	clear(): void;
-	reinitAgents(count: number): void;
+	reinitAgents(count: number, spawnPattern?: SpawnPattern): void;
 	destroy(): void;
 	configureCanvas(canvas: HTMLCanvasElement): boolean;
 	exportScreenshot(width: number, height: number): Promise<Uint8Array>;
@@ -57,13 +57,53 @@ interface GPUSimulationState {
 	currentSourceIsA: boolean;
 	currentConfig: SlimeConfig;
 	configDirty: boolean;
-	cachedColorR: number;
-	cachedColorG: number;
-	cachedColorB: number;
+	cachedLowColor: [number, number, number];
+	cachedMidColor: [number, number, number];
+	cachedHighColor: [number, number, number];
 	gridTextureBytesPerRow: number;
 }
 
 const frameSeedArray = new Float32Array(1);
+const emptyColor: [number, number, number] = [-1, -1, -1];
+
+function colorsMatch(
+	first: [number, number, number],
+	second: [number, number, number],
+): boolean {
+	return (
+		first[0] === second[0] && first[1] === second[1] && first[2] === second[2]
+	);
+}
+
+function updateRenderColors(
+	state: GPUSimulationState,
+	device: GPUDevice,
+	renderUniform: ConfigUniform,
+): void {
+	const presetColors = getColorPresetFloats(state.currentConfig.colorPreset);
+
+	if (
+		colorsMatch(presetColors.low, state.cachedLowColor) &&
+		colorsMatch(presetColors.mid, state.cachedMidColor) &&
+		colorsMatch(presetColors.high, state.cachedHighColor)
+	) {
+		return;
+	}
+
+	updateRenderUniform(
+		device,
+		renderUniform,
+		state.width,
+		state.height,
+		presetColors.low,
+		presetColors.mid,
+		presetColors.high,
+	);
+
+	state.cachedLowColor = presetColors.low;
+	state.cachedMidColor = presetColors.mid;
+	state.cachedHighColor = presetColors.high;
+}
 
 function createCachedBindGroups(
 	device: GPUDevice,
@@ -184,6 +224,7 @@ export async function createGPUSimulation(
 		initialAgentCount,
 		width,
 		height,
+		initialConfig.spawnPattern,
 	);
 	const configUniform = createConfigUniform(device);
 	const renderUniform = createRenderUniform(device);
@@ -218,9 +259,9 @@ export async function createGPUSimulation(
 		currentSourceIsA: true,
 		currentConfig: initialConfig,
 		configDirty: true,
-		cachedColorR: -1,
-		cachedColorG: -1,
-		cachedColorB: -1,
+		cachedLowColor: emptyColor,
+		cachedMidColor: emptyColor,
+		cachedHighColor: emptyColor,
 		gridTextureBytesPerRow: width * 4,
 	};
 
@@ -229,7 +270,8 @@ export async function createGPUSimulation(
 		render: () => render(state),
 		setConfig: (config: SlimeConfig) => setConfig(state, config),
 		clear: () => clear(state),
-		reinitAgents: (count: number) => reinitAgents(state, count),
+		reinitAgents: (count: number, spawnPattern?: SpawnPattern) =>
+			reinitAgents(state, count, spawnPattern),
 		destroy: () => destroy(state),
 		configureCanvas: (canvas: HTMLCanvasElement) =>
 			configureCanvas(state, canvas),
@@ -258,29 +300,7 @@ function tickAndRender(state: GPUSimulationState): void {
 		device.queue.writeBuffer(state.configUniform.buffer, 28, frameSeedArray);
 	}
 
-	const { r, g, b } = hexToRgb(state.currentConfig.color);
-	const colorR = r / 255;
-	const colorG = g / 255;
-	const colorB = b / 255;
-
-	if (
-		colorR !== state.cachedColorR ||
-		colorG !== state.cachedColorG ||
-		colorB !== state.cachedColorB
-	) {
-		updateRenderUniform(
-			device,
-			state.renderUniform,
-			state.width,
-			state.height,
-			colorR,
-			colorG,
-			colorB,
-		);
-		state.cachedColorR = colorR;
-		state.cachedColorG = colorG;
-		state.cachedColorB = colorB;
-	}
+	updateRenderColors(state, device, state.renderUniform);
 
 	const commandEncoder = device.createCommandEncoder();
 
@@ -344,29 +364,7 @@ function tickAndRender(state: GPUSimulationState): void {
 function render(state: GPUSimulationState): void {
 	const { device } = state.context;
 
-	const { r, g, b } = hexToRgb(state.currentConfig.color);
-	const colorR = r / 255;
-	const colorG = g / 255;
-	const colorB = b / 255;
-
-	if (
-		colorR !== state.cachedColorR ||
-		colorG !== state.cachedColorG ||
-		colorB !== state.cachedColorB
-	) {
-		updateRenderUniform(
-			device,
-			state.renderUniform,
-			state.width,
-			state.height,
-			colorR,
-			colorG,
-			colorB,
-		);
-		state.cachedColorR = colorR;
-		state.cachedColorG = colorG;
-		state.cachedColorB = colorB;
-	}
+	updateRenderColors(state, device, state.renderUniform);
 
 	const commandEncoder = device.createCommandEncoder();
 
@@ -410,7 +408,11 @@ function clear(state: GPUSimulationState): void {
 	state.currentSourceIsA = true;
 }
 
-function reinitAgents(state: GPUSimulationState, count: number): void {
+function reinitAgents(
+	state: GPUSimulationState,
+	count: number,
+	spawnPattern?: SpawnPattern,
+): void {
 	const { device } = state.context;
 
 	state.agentBuffers.positionsX.destroy();
@@ -422,6 +424,7 @@ function reinitAgents(state: GPUSimulationState, count: number): void {
 		count,
 		state.width,
 		state.height,
+		spawnPattern ?? state.currentConfig.spawnPattern,
 	);
 
 	state.cachedBindGroups = createCachedBindGroups(
@@ -480,10 +483,7 @@ async function exportScreenshot(
 ): Promise<Uint8Array> {
 	const { device } = state.context;
 
-	const { r, g, b } = hexToRgb(state.currentConfig.color);
-	const colorR = r / 255;
-	const colorG = g / 255;
-	const colorB = b / 255;
+	const presetColors = getColorPresetFloats(state.currentConfig.colorPreset);
 
 	/*
 	 * Specific render pipeline for export,
@@ -497,9 +497,9 @@ async function exportScreenshot(
 		exportRenderUniform,
 		state.width,
 		state.height,
-		colorR,
-		colorG,
-		colorB,
+		presetColors.low,
+		presetColors.mid,
+		presetColors.high,
 	);
 
 	const offscreenTexture = device.createTexture({

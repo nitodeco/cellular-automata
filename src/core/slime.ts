@@ -1,6 +1,90 @@
 import { GRID_COLS_MASK, GRID_ROWS_MASK } from "../constants";
+import { hexToRgb } from "../utils/color";
 import type { Grid } from "./grid";
+import { generateAgentPositions } from "./spawnPatterns";
 import { fastCos, fastSin } from "./trigLookup";
+
+export type SpawnPattern =
+	| "random"
+	| "center"
+	| "circle"
+	| "multiCircle"
+	| "spiral";
+
+export type ColorPresetName =
+	| "neon"
+	| "ocean"
+	| "ember"
+	| "toxic"
+	| "void"
+	| "sunset"
+	| "forest"
+	| "arctic"
+	| "lava"
+	| "plasma"
+	| "aurora"
+	| "fire";
+
+export interface ColorPreset {
+	low: string;
+	mid: string;
+	high: string;
+}
+
+export const COLOR_PRESETS: Record<ColorPresetName, ColorPreset> = {
+	neon: { low: "#1a0a33", mid: "#ff00b7", high: "#ff66ff" },
+	ocean: { low: "#0a2c35", mid: "#00e0ff", high: "#66ffff" },
+	ember: { low: "#2a0505", mid: "#ff6b00", high: "#ffaa00" },
+	toxic: { low: "#082c14", mid: "#55ff55", high: "#88ff88" },
+	void: { low: "#05050a", mid: "#5b1b7d", high: "#ff00aa" },
+	sunset: { low: "#240a16", mid: "#ff5a3d", high: "#ff9a73" },
+	forest: { low: "#0a1f12", mid: "#2f8f46", high: "#8fcf9a" },
+	arctic: { low: "#0a1a2a", mid: "#2c9ad7", high: "#7fd7ff" },
+	lava: { low: "#220000", mid: "#d12d00", high: "#ff7a00" },
+	plasma: { low: "#0a0a26", mid: "#5a0fd1", high: "#73d7ff" },
+	aurora: { low: "#04120f", mid: "#1dbd6f", high: "#5fd2d2" },
+	fire: { low: "#2d0b00", mid: "#ff3c00", high: "#ffae00" },
+};
+
+export const COLOR_PRESET_NAMES: ColorPresetName[] = [
+	"arctic",
+	"aurora",
+	"ember",
+	"fire",
+	"forest",
+	"lava",
+	"neon",
+	"ocean",
+	"plasma",
+	"sunset",
+	"toxic",
+	"void",
+];
+
+export function getColorPreset(presetName: ColorPresetName): ColorPreset {
+	return COLOR_PRESETS[presetName] ?? COLOR_PRESETS.neon;
+}
+
+export interface ColorPresetFloats {
+	low: [number, number, number];
+	mid: [number, number, number];
+	high: [number, number, number];
+}
+
+export function getColorPresetFloats(
+	presetName: ColorPresetName,
+): ColorPresetFloats {
+	const preset = getColorPreset(presetName);
+	const lowRgb = hexToRgb(preset.low);
+	const midRgb = hexToRgb(preset.mid);
+	const highRgb = hexToRgb(preset.high);
+
+	return {
+		low: [lowRgb.red / 255, lowRgb.green / 255, lowRgb.blue / 255],
+		mid: [midRgb.red / 255, midRgb.green / 255, midRgb.blue / 255],
+		high: [highRgb.red / 255, highRgb.green / 255, highRgb.blue / 255],
+	};
+}
 
 export interface SlimeConfig {
 	sensorAngle: number;
@@ -11,7 +95,8 @@ export interface SlimeConfig {
 	depositAmount: number;
 	agentSpeed: number;
 	agentCount: number;
-	color: string;
+	colorPreset: ColorPresetName;
+	spawnPattern: SpawnPattern;
 }
 
 export const DEFAULT_SLIME_CONFIG: SlimeConfig = {
@@ -23,7 +108,8 @@ export const DEFAULT_SLIME_CONFIG: SlimeConfig = {
 	depositAmount: 50,
 	agentSpeed: 1,
 	agentCount: 5,
-	color: "#FB00FF",
+	colorPreset: "neon",
+	spawnPattern: "random",
 };
 
 export interface AgentPool {
@@ -37,16 +123,14 @@ export function createAgentPool(
 	count: number,
 	width: number,
 	height: number,
+	spawnPattern: SpawnPattern = "random",
 ): AgentPool {
-	const xPositions = new Float32Array(count);
-	const yPositions = new Float32Array(count);
-	const angles = new Float32Array(count);
-
-	for (let index = 0; index < count; index++) {
-		xPositions[index] = Math.random() * width;
-		yPositions[index] = Math.random() * height;
-		angles[index] = Math.random() * Math.PI * 2;
-	}
+	const { xPositions, yPositions, angles } = generateAgentPositions(
+		spawnPattern,
+		count,
+		width,
+		height,
+	);
 
 	return {
 		x: xPositions,
