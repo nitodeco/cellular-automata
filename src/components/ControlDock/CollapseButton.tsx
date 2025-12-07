@@ -11,12 +11,6 @@ export const CollapseButton = (props: Props) => {
 			type="button"
 			onClick={props.onClick}
 			class="collapse-button absolute top-0 left-1/2 -translate-x-1/2 -translate-y-[calc(100%-1px)] px-4 aspect-2/1 cursor-pointer z-30 pointer-events-auto flex items-center justify-center rounded-t-xl"
-			style={{
-				"backdrop-filter": "blur(12px) saturate(120%)",
-				"-webkit-backdrop-filter": "blur(12px) saturate(120%)",
-				"box-shadow":
-					"0 -4px 16px rgba(0, 0, 0, 0.15), inset 0 0.5px 0 rgba(255, 255, 255, 0.25)",
-			}}
 			aria-label={props.collapsed() ? "Expand controls" : "Collapse controls"}
 		>
 			{props.collapsed() ? (

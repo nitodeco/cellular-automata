@@ -77,8 +77,8 @@ export const ControlDock = (props: Props) => {
 					class="glass-panel pointer-events-auto flex flex-row items-center justify-center py-2 px-4 gap-3 z-40 rounded-2xl rounded-b-none"
 					style={{
 						background: collapsed()
-							? "rgba(255, 255, 255, 0.01)"
-							: "rgba(48, 48, 48, 0.5)",
+							? "rgba(48, 48, 48, 0.75)"
+							: "rgba(48, 48, 48, 0.85)",
 						"backdrop-filter": collapsed()
 							? "blur(16px) saturate(120%)"
 							: "blur(32px) saturate(120%)",
@@ -111,7 +111,7 @@ export const ControlDock = (props: Props) => {
 						<div
 							class="glass-panel pointer-events-auto flex flex-col rounded-2xl py-3 px-4 gap-4 z-30"
 							style={{
-								background: "rgba(48, 48, 48, 0.5)",
+								background: "rgba(48, 48, 48, 0.85)",
 								"backdrop-filter": "blur(32px) saturate(120%)",
 								"-webkit-backdrop-filter": "blur(32px) saturate(120%)",
 								"border-top": "none",

@@ -103,7 +103,7 @@ export const FavoritesSidebar = (props: Props) => {
 					props.isOpen ? "translate-x-0" : "-translate-x-full"
 				}`}
 				style={{
-					background: "rgba(48, 48, 48, 0.5)",
+					background: "rgba(48, 48, 48, 0.85)",
 					"backdrop-filter": "blur(32px) saturate(120%)",
 					"-webkit-backdrop-filter": "blur(32px) saturate(120%)",
 					transition:
