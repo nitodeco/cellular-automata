@@ -8,7 +8,6 @@ import type {
 	LockedSettings,
 	SpeciesLockedSettings,
 } from "../../utils/storage";
-import { Button } from "../Button";
 import { CollapseButton } from "./CollapseButton";
 import { ExportControl } from "./ExportControl";
 import { InteractionMatrix } from "./InteractionMatrix";
@@ -23,7 +22,6 @@ interface Props {
 	speed: () => number;
 	slimeConfig: () => SlimeConfig;
 	lockedSettings: () => LockedSettings;
-	useWebGPU: () => boolean;
 	viewportWidth: number;
 	viewportHeight: number;
 	isExporting: () => boolean;
@@ -40,7 +38,6 @@ interface Props {
 		interactionCol?: number,
 	) => void;
 	onRandomize: () => void;
-	onToggleSimulationMode: () => void;
 	onExport: (width: number, height: number) => void;
 	onToggleRecording: () => void;
 	onToggleLock: (key: keyof Omit<LockedSettings, "species">) => void;
@@ -159,15 +156,6 @@ export const ControlDock = (props: Props) => {
 										props.onSlimeConfigChange("enabledSpawnPatterns", patterns)
 									}
 								/>
-								<Button
-									onClick={props.onToggleSimulationMode}
-									class="h-[36px] px-3 min-w-[64px] flex items-center justify-center"
-									aria-label="Toggle simulation mode"
-								>
-									<span class="text-sm font-mono">
-										{props.useWebGPU() ? "GPU" : "CPU"}
-									</span>
-								</Button>
 							</div>
 							<div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-white/10 items-stretch">
 								<div class="flex flex-col gap-4 h-full">

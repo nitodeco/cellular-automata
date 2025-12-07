@@ -130,10 +130,10 @@ export function createAgentBuffers(
 		label: "Agent Species",
 	});
 
-	const selectedPattern =
+	const selectedPattern: SpawnPattern =
 		spawnPattern ??
 		(() => {
-			const enabledPatterns =
+			const enabledPatterns: SpawnPattern[] =
 				config.enabledSpawnPatterns.length > 0
 					? config.enabledSpawnPatterns
 					: ["center", "circle", "multiCircle", "spiral"];

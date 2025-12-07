@@ -26,6 +26,8 @@ export interface GPUSimulation {
 	setConfig(config: SlimeConfig): void;
 	clear(): void;
 	reinitAgents(count: number, spawnPattern?: SpawnPattern): void;
+	resize(width: number, height: number, agentCount: number): void;
+	getGridDimensions(): { width: number; height: number };
 	destroy(): void;
 	configureCanvas(canvas: HTMLCanvasElement): boolean;
 	exportScreenshot(width: number, height: number): Promise<Uint8Array>;
@@ -284,6 +286,9 @@ export async function createGPUSimulation(
 		clear: () => clear(state),
 		reinitAgents: (count: number, spawnPattern?: SpawnPattern) =>
 			reinitAgents(state, count, spawnPattern),
+		resize: (width: number, height: number, agentCount: number) =>
+			resize(state, width, height, agentCount),
+		getGridDimensions: () => ({ width: state.width, height: state.height }),
 		destroy: () => destroy(state),
 		configureCanvas: (canvas: HTMLCanvasElement) =>
 			configureCanvas(state, canvas),
@@ -455,6 +460,56 @@ function reinitAgents(
 	state.configDirty = true;
 }
 
+function resize(
+	state: GPUSimulationState,
+	newWidth: number,
+	newHeight: number,
+	agentCount: number,
+): void {
+	const { device } = state.context;
+
+	state.gridBuffers.bufferA.destroy();
+	state.gridBuffers.bufferB.destroy();
+	state.gridBuffers.textureA.destroy();
+	state.gridBuffers.textureB.destroy();
+	state.agentBuffers.positionsX.destroy();
+	state.agentBuffers.positionsY.destroy();
+	state.agentBuffers.angles.destroy();
+	state.agentBuffers.species.destroy();
+
+	state.width = newWidth;
+	state.height = newHeight;
+	state.gridTextureBytesPerRow = newWidth * 16;
+
+	state.gridBuffers = createGridBuffers(device, newWidth, newHeight);
+	state.agentBuffers = createAgentBuffers(
+		device,
+		agentCount,
+		newWidth,
+		newHeight,
+		state.currentConfig,
+	);
+
+	state.cachedBindGroups = createCachedBindGroups(
+		device,
+		state.gridBuffers,
+		state.agentBuffers,
+		state.configUniform,
+		state.renderUniform,
+		state.computePipelines,
+		state.renderPipeline,
+	);
+
+	state.cachedSpeciesColors = [
+		{ low: emptyColor, mid: emptyColor, high: emptyColor },
+		{ low: emptyColor, mid: emptyColor, high: emptyColor },
+		{ low: emptyColor, mid: emptyColor, high: emptyColor },
+	];
+
+	state.currentSourceIsA = true;
+	state.configDirty = true;
+}
+
 function destroy(state: GPUSimulationState): void {
 	state.gridBuffers.bufferA.destroy();
 	state.gridBuffers.bufferB.destroy();
@@ -476,7 +531,7 @@ function configureCanvas(
 	const canvasContext = canvas.getContext("webgpu");
 	if (!canvasContext) {
 		console.warn(
-			"Failed to get WebGPU canvas context, falling back to CPU rendering",
+			"Failed to get WebGPU canvas context. WebGPU is required to run this simulation.",
 		);
 		return false;
 	}

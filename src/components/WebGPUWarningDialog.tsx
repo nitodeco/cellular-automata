@@ -13,8 +13,9 @@ export const WebGPUWarningDialog = () => {
 			<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
 				<div class="glass-popover p-6 max-w-sm mx-4 rounded-2xl">
 					<p class="text-white/90 mb-5 text-sm leading-relaxed font-medium">
-						Your device/browser does not support WebGPU. You can still run the
-						simulation, although at significantly lower performance
+						Your device or browser does not support WebGPU. This simulation
+						requires WebGPU to run. Please try using a browser that supports
+						WebGPU, such as Chrome 113+, Edge 113+, or Safari 18+.
 					</p>
 					<div class="flex justify-end">
 						<Button onClick={handleDismiss}>OK</Button>

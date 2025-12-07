@@ -5,17 +5,18 @@ import {
 	onCleanup,
 	onMount,
 } from "solid-js";
-import { GRID_COLS, GRID_ROWS, MAX_CPU_AGENTS } from "../constants";
-import { createEngine, type Engine } from "../core/engine";
-import { clearGrid, createGrid, type Grid } from "../core/grid";
 import {
-	type AgentPool,
+	getGridDimensions,
+	MAX_RESOLUTION_SCALE,
+	MIN_RESOLUTION_SCALE,
+	RESOLUTION_SCALE_STEP,
+} from "../constants";
+import { createEngine, type Engine } from "../core/engine";
+import {
 	COLOR_PRESET_NAMES,
-	createAgentPool,
 	DEFAULT_SLIME_CONFIG,
 	type SlimeConfig,
 	type SpeciesConfig,
-	stepSlime,
 } from "../core/slime";
 import {
 	createGPUSimulation,
@@ -38,10 +39,12 @@ import {
 	saveSimulationSettings,
 } from "../utils/storage";
 
-export function useSimulation() {
-	const bufferA = createGrid(GRID_ROWS, GRID_COLS);
-	const bufferB = createGrid(GRID_ROWS, GRID_COLS);
+const TARGET_FPS = 60;
+const SCALE_UP_FPS_THRESHOLD = 75;
+const SCALE_DOWN_CONSECUTIVE_CHECKS = 3;
+const SCALE_UP_CONSECUTIVE_CHECKS = 5;
 
+export function useSimulation() {
 	function loadSettingsFromQuery(): SimulationSettings | null {
 		if (typeof window === "undefined") {
 			return null;
@@ -57,7 +60,6 @@ export function useSimulation() {
 		return decodeSimulationSettings(encodedSettings);
 	}
 
-	const [currentBuffer, setCurrentBuffer] = createSignal<Grid>(bufferA);
 	const [running, setRunning] = createSignal(false);
 
 	const querySettings = loadSettingsFromQuery();
@@ -77,25 +79,24 @@ export function useSimulation() {
 	const [webGPUSupported, setWebGPUSupported] = createSignal<boolean | null>(
 		null,
 	);
-	const [useWebGPU, setUseWebGPU] = createSignal(
-		initialSettings?.useWebGPU ?? true,
-	);
 	const [lockedSettings, setLockedSettings] = createSignal<LockedSettings>(
 		loadLockedSettings() ?? DEFAULT_LOCKED_SETTINGS,
 	);
 	const [gpuInitializing, setGpuInitializing] = createSignal(true);
-	const [canvasKey, setCanvasKey] = createSignal(0);
 	const [fps, setFps] = createSignal(0);
 	const [averageFrameTime, setAverageFrameTime] = createSignal(0);
 	const [isExporting, setIsExporting] = createSignal(false);
 	const [isRecording, setIsRecording] = createSignal(false);
 	const [stepCount, setStepCount] = createSignal(0);
+	const [resolutionScale, setResolutionScale] =
+		createSignal(MAX_RESOLUTION_SCALE);
 
 	let isInitialLoad = true;
 	let internalStepCount = 0;
+	let lowFpsConsecutiveChecks = 0;
+	let highFpsConsecutiveChecks = 0;
 
 	let engine: Engine | undefined;
-	const agentsRef: { current: AgentPool | null } = { current: null };
 	let gpuSimulation: GPUSimulation | null = null;
 	let canvasRef: HTMLCanvasElement | null = null;
 	let mediaRecorder: MediaRecorder | null = null;
@@ -103,59 +104,32 @@ export function useSimulation() {
 	let gpuInitialized = false;
 	let lastFrameTime = 0;
 
-	const agentCount = createMemo(() => {
-		return calculateAgentCount(slimeConfig());
+	const gridDimensions = createMemo(() => {
+		return getGridDimensions(resolutionScale());
 	});
 
-	function getOtherBuffer(current: Grid): Grid {
-		return current === bufferA ? bufferB : bufferA;
-	}
-
-	function forceRerender() {
-		setCurrentBuffer((current) => current);
-	}
+	const agentCount = createMemo(() => {
+		return calculateAgentCount(slimeConfig(), gridDimensions());
+	});
 
 	function speedToInterval(speedValue: number): number {
 		const interval = 100 - speedValue;
 		return interval === 0 ? 1 : interval;
 	}
 
-	function calculateAgentCount(config: SlimeConfig): number {
-		const rawCount = Math.floor(
-			GRID_ROWS * GRID_COLS * (config.agentCount / 100),
-		);
-
-		if (!gpuAvailable() || !useWebGPU()) {
-			return Math.min(rawCount, MAX_CPU_AGENTS);
-		}
-
-		return rawCount;
-	}
-
-	function initAgents() {
-		const config = slimeConfig();
-		const count = calculateAgentCount(config);
-		agentsRef.current = createAgentPool(count, GRID_COLS, GRID_ROWS, config);
+	function calculateAgentCount(
+		config: SlimeConfig,
+		dimensions?: { cols: number; rows: number },
+	): number {
+		const dims = dimensions ?? gridDimensions();
+		return Math.floor(dims.rows * dims.cols * (config.agentCount / 100));
 	}
 
 	function tick() {
 		const startTime = performance.now();
 
-		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
+		if (gpuSimulation) {
 			gpuSimulation.tickAndRender();
-		} else {
-			const source = currentBuffer();
-			const destination = getOtherBuffer(source);
-
-			if (agentsRef.current === null) {
-				initAgents();
-			}
-
-			if (agentsRef.current) {
-				stepSlime(source, destination, agentsRef.current, slimeConfig());
-			}
-
-			setCurrentBuffer(destination);
 		}
 
 		internalStepCount++;
@@ -180,7 +154,8 @@ export function useSimulation() {
 	function handleClear() {
 		internalStepCount = 0;
 		setStepCount(0);
-		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
+
+		if (gpuSimulation) {
 			gpuSimulation.clear();
 
 			const config = slimeConfig();
@@ -188,16 +163,6 @@ export function useSimulation() {
 
 			gpuSimulation.reinitAgents(count);
 			gpuSimulation.render();
-		} else {
-			const current = currentBuffer();
-
-			clearGrid(current);
-			clearGrid(getOtherBuffer(current));
-
-			agentsRef.current = null;
-
-			initAgents();
-			forceRerender();
 		}
 	}
 
@@ -246,7 +211,7 @@ export function useSimulation() {
 			key === "enabledSpawnPatterns" ||
 			(speciesIndex !== undefined && speciesKey === "agentCount");
 
-		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
+		if (gpuSimulation) {
 			gpuSimulation.setConfig(newConfig);
 
 			if (requiresReinit) {
@@ -254,14 +219,6 @@ export function useSimulation() {
 
 				gpuSimulation.reinitAgents(count);
 				gpuSimulation.clear();
-			}
-		} else {
-			if (requiresReinit) {
-				const current = currentBuffer();
-
-				initAgents();
-				clearGrid(current);
-				clearGrid(getOtherBuffer(current));
 			}
 		}
 	}
@@ -393,7 +350,7 @@ export function useSimulation() {
 		internalStepCount = 0;
 		setStepCount(0);
 
-		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
+		if (gpuSimulation) {
 			gpuSimulation.setConfig(newConfig);
 
 			const count = calculateAgentCount(newConfig);
@@ -401,13 +358,6 @@ export function useSimulation() {
 			gpuSimulation.reinitAgents(count, randomSpawnPattern);
 			gpuSimulation.clear();
 			gpuSimulation.render();
-		} else {
-			const current = currentBuffer();
-
-			initAgents();
-			clearGrid(current);
-			clearGrid(getOtherBuffer(current));
-			forceRerender();
 		}
 	}
 
@@ -419,14 +369,15 @@ export function useSimulation() {
 		gpuInitialized = true;
 
 		const config = slimeConfig();
-		const agentCount = Math.floor(
-			GRID_ROWS * GRID_COLS * (config.agentCount / 100),
+		const dims = gridDimensions();
+		const initialAgentCount = Math.floor(
+			dims.rows * dims.cols * (config.agentCount / 100),
 		);
 
 		gpuSimulation = await createGPUSimulation(
-			GRID_COLS,
-			GRID_ROWS,
-			agentCount,
+			dims.cols,
+			dims.rows,
+			initialAgentCount,
 			config,
 		);
 
@@ -437,43 +388,15 @@ export function useSimulation() {
 				setGpuAvailable(true);
 				setWebGPUSupported(true);
 				setGpuInitializing(false);
-
-				console.log("WebGPU acceleration enabled");
 			} else {
 				gpuSimulation.destroy();
 				gpuSimulation = null;
 
-				setUseWebGPU(false);
 				setWebGPUSupported(false);
 				setGpuInitializing(false);
-
-				console.log(
-					"WebGPU canvas configuration failed, using CPU fallback (max 50k agents)",
-				);
 			}
 		} else {
-			setUseWebGPU(false);
 			setWebGPUSupported(false);
-			setGpuInitializing(false);
-
-			console.log("WebGPU not available, using CPU fallback (max 50k agents)");
-		}
-	}
-
-	function handleToggleSimulationMode() {
-		const currentMode = useWebGPU();
-		setUseWebGPU(!currentMode);
-		setCanvasKey((key) => key + 1);
-
-		if (!currentMode) {
-			if (gpuSimulation) {
-				gpuSimulation.destroy();
-				gpuSimulation = null;
-			}
-			gpuInitialized = false;
-			setGpuAvailable(false);
-			setGpuInitializing(true);
-		} else {
 			setGpuInitializing(false);
 		}
 	}
@@ -486,11 +409,9 @@ export function useSimulation() {
 		setIsExporting(true);
 
 		try {
-			if (gpuAvailable() && useWebGPU() && gpuSimulation) {
+			if (gpuSimulation) {
 				const pixelData = await gpuSimulation.exportScreenshot(width, height);
 				downloadPixelDataAsPng(pixelData, width, height);
-			} else if (canvasRef) {
-				downloadCanvasAsPng(canvasRef, width, height);
 			}
 		} catch (error) {
 			console.error("Failed to export screenshot:", error);
@@ -534,46 +455,9 @@ export function useSimulation() {
 		}, "image/png");
 	}
 
-	function downloadCanvasAsPng(
-		sourceCanvas: HTMLCanvasElement,
-		targetWidth: number,
-		targetHeight: number,
-	) {
-		const exportCanvas = document.createElement("canvas");
-		exportCanvas.width = targetWidth;
-		exportCanvas.height = targetHeight;
-
-		const context = exportCanvas.getContext("2d");
-		if (!context) {
-			console.error("Failed to get 2D context for export canvas");
-			return;
-		}
-
-		context.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
-
-		exportCanvas.toBlob((blob) => {
-			if (!blob) {
-				console.error("Failed to create blob from canvas");
-				return;
-			}
-
-			const url = URL.createObjectURL(blob);
-			const link = document.createElement("a");
-			link.href = url;
-			link.download = `slime-mold-${targetWidth}x${targetHeight}-${Date.now()}.png`;
-			link.click();
-
-			URL.revokeObjectURL(url);
-		}, "image/png");
-	}
-
 	function setCanvasRef(canvas: HTMLCanvasElement) {
 		canvasRef = canvas;
-		if (useWebGPU()) {
-			initGPU();
-		} else {
-			setGpuInitializing(false);
-		}
+		initGPU();
 	}
 
 	function handleToggleRecording() {
@@ -646,7 +530,6 @@ export function useSimulation() {
 		const currentSettings: SimulationSettings = {
 			speed: speed(),
 			slimeConfig: slimeConfig(),
-			useWebGPU: useWebGPU(),
 		};
 
 		const encodedSettings = encodeSimulationSettings(currentSettings);
@@ -656,10 +539,62 @@ export function useSimulation() {
 		return shareUrl.toString();
 	}
 
+	function adjustResolutionScale(currentFps: number): void {
+		if (!gpuAvailable() || !gpuSimulation || !running()) {
+			lowFpsConsecutiveChecks = 0;
+			highFpsConsecutiveChecks = 0;
+			return;
+		}
+
+		const currentScale = resolutionScale();
+
+		if (currentFps < TARGET_FPS && currentScale > MIN_RESOLUTION_SCALE) {
+			lowFpsConsecutiveChecks++;
+			highFpsConsecutiveChecks = 0;
+
+			if (lowFpsConsecutiveChecks >= SCALE_DOWN_CONSECUTIVE_CHECKS) {
+				const newScale = Math.max(
+					MIN_RESOLUTION_SCALE,
+					Math.round((currentScale - RESOLUTION_SCALE_STEP) * 100) / 100,
+				);
+				applyResolutionScale(newScale);
+				lowFpsConsecutiveChecks = 0;
+			}
+		} else if (
+			currentFps > SCALE_UP_FPS_THRESHOLD &&
+			currentScale < MAX_RESOLUTION_SCALE
+		) {
+			highFpsConsecutiveChecks++;
+			lowFpsConsecutiveChecks = 0;
+
+			if (highFpsConsecutiveChecks >= SCALE_UP_CONSECUTIVE_CHECKS) {
+				const newScale = Math.min(
+					MAX_RESOLUTION_SCALE,
+					Math.round((currentScale + RESOLUTION_SCALE_STEP) * 100) / 100,
+				);
+				applyResolutionScale(newScale);
+				highFpsConsecutiveChecks = 0;
+			}
+		} else {
+			lowFpsConsecutiveChecks = 0;
+			highFpsConsecutiveChecks = 0;
+		}
+	}
+
+	function applyResolutionScale(newScale: number): void {
+		if (!gpuSimulation) return;
+
+		setResolutionScale(newScale);
+		const newDimensions = getGridDimensions(newScale);
+		const config = slimeConfig();
+		const newAgentCount = calculateAgentCount(config, newDimensions);
+
+		gpuSimulation.resize(newDimensions.cols, newDimensions.rows, newAgentCount);
+	}
+
 	createEffect(() => {
 		const currentSpeed = speed();
 		const currentSlimeConfig = slimeConfig();
-		const currentUseWebGPU = useWebGPU();
 
 		if (isInitialLoad) {
 			return;
@@ -668,7 +603,6 @@ export function useSimulation() {
 		saveSimulationSettings({
 			speed: currentSpeed,
 			slimeConfig: currentSlimeConfig,
-			useWebGPU: currentUseWebGPU,
 		});
 	});
 
@@ -677,11 +611,12 @@ export function useSimulation() {
 
 		engine = createEngine(tick);
 		engine.setSpeed(speedToInterval(speed()));
-		initAgents();
 
 		const metricsInterval = setInterval(() => {
 			if (engine) {
-				setFps(engine.getFps());
+				const currentFps = engine.getFps();
+				setFps(currentFps);
+				adjustResolutionScale(currentFps);
 			}
 			setAverageFrameTime(lastFrameTime);
 			setStepCount(internalStepCount);
@@ -695,27 +630,25 @@ export function useSimulation() {
 	});
 
 	return {
-		grid: currentBuffer,
 		running,
 		speed,
 		slimeConfig,
 		gpuAvailable,
 		webGPUSupported,
-		useWebGPU,
 		gpuInitializing,
-		canvasKey,
 		fps,
 		averageFrameTime,
 		agentCount,
 		stepCount,
 		isExporting,
 		lockedSettings,
+		resolutionScale,
+		gridDimensions,
 		handlePlayPause,
 		handleClear,
 		handleSpeedChange,
 		handleSlimeConfigChange,
 		handleRandomize,
-		handleToggleSimulationMode,
 		handleExportScreenshot,
 		handleToggleRecording,
 		handleToggleLock,

@@ -1,8 +1,4 @@
-import { GRID_COLS_MASK, GRID_ROWS_MASK } from "../constants";
 import { hexToRgb } from "../utils/color";
-import type { Grid } from "./grid";
-import { generateAgentPositions } from "./spawnPatterns";
-import { fastCos, fastSin } from "./trigLookup";
 
 export const VALID_SPAWN_PATTERNS = [
 	"random",
@@ -96,16 +92,16 @@ export interface SpeciesConfig {
 	agentSpeed: number;
 	depositAmount: number;
 	colorPreset: ColorPresetName;
-	agentCount: number; // percentage of total
+	agentCount: number;
 }
 
 export interface SlimeConfig {
 	decayRate: number;
 	diffuseWeight: number;
 	enabledSpawnPatterns: SpawnPattern[];
-	agentCount: number; // Total agent count
+	agentCount: number;
 	species: [SpeciesConfig, SpeciesConfig, SpeciesConfig];
-	interactions: number[][]; // 3x3 matrix
+	interactions: number[][];
 }
 
 export const DEFAULT_SPECIES_CONFIG: SpeciesConfig = {
@@ -134,198 +130,3 @@ export const DEFAULT_SLIME_CONFIG: SlimeConfig = {
 		[-0.1, -0.1, 1],
 	],
 };
-
-export interface AgentPool {
-	x: Float32Array;
-	y: Float32Array;
-	angle: Float32Array;
-	species: Uint32Array;
-	count: number;
-}
-
-export function createAgentPool(
-	count: number,
-	width: number,
-	height: number,
-	config: SlimeConfig,
-): AgentPool {
-	const enabledPatterns =
-		config.enabledSpawnPatterns.length > 0
-			? config.enabledSpawnPatterns
-			: VALID_SPAWN_PATTERNS.filter((pattern) => pattern !== "random");
-	const selectedPattern =
-		enabledPatterns[Math.floor(Math.random() * enabledPatterns.length)];
-	const { xPositions, yPositions, angles } = generateAgentPositions(
-		selectedPattern,
-		count,
-		width,
-		height,
-	);
-
-	const species = new Uint32Array(count);
-	const species1Count = Math.floor(
-		(count * config.species[0].agentCount) / 100,
-	);
-	const species2Count = Math.floor(
-		(count * config.species[1].agentCount) / 100,
-	);
-
-	for (let i = 0; i < count; i++) {
-		if (i < species1Count) {
-			species[i] = 0;
-		} else if (i < species1Count + species2Count) {
-			species[i] = 1;
-		} else {
-			species[i] = 2;
-		}
-	}
-
-	return {
-		x: xPositions,
-		y: yPositions,
-		angle: angles,
-		species,
-		count,
-	};
-}
-
-export function stepSlime(
-	source: Grid,
-	destination: Grid,
-	agents: AgentPool,
-	config: SlimeConfig,
-): void {
-	const { width, height } = source;
-	const sourceData = source.data;
-	const destData = destination.data;
-
-	const diffuseWeight = config.diffuseWeight;
-	const oneMinusDiffuse = 1 - diffuseWeight;
-	const decayRate = config.decayRate;
-	const oneNinth = 0.1111111111;
-
-	for (let cellY = 0; cellY < height; cellY++) {
-		const rowOffset = cellY * width;
-		const aboveRow = ((cellY - 1) & GRID_ROWS_MASK) * width;
-		const belowRow = ((cellY + 1) & GRID_ROWS_MASK) * width;
-
-		for (let cellX = 0; cellX < width; cellX++) {
-			const left = (cellX - 1) & GRID_COLS_MASK;
-			const right = (cellX + 1) & GRID_COLS_MASK;
-
-			const sum =
-				sourceData[aboveRow + left] +
-				sourceData[aboveRow + cellX] +
-				sourceData[aboveRow + right] +
-				sourceData[rowOffset + left] +
-				sourceData[rowOffset + cellX] +
-				sourceData[rowOffset + right] +
-				sourceData[belowRow + left] +
-				sourceData[belowRow + cellX] +
-				sourceData[belowRow + right];
-
-			const index = rowOffset + cellX;
-			const original = sourceData[index];
-			const blurred = sum * oneNinth;
-			const diffused = original * oneMinusDiffuse + blurred * diffuseWeight;
-
-			const newValue = diffused - decayRate;
-			destData[index] = newValue > 0 ? newValue : 0;
-		}
-	}
-
-	const agentXPositions = agents.x;
-	const agentYPositions = agents.y;
-	const agentAngles = agents.angle;
-	const agentSpecies = agents.species;
-	const agentCount = agents.count;
-
-	for (let agentIndex = 0; agentIndex < agentCount; agentIndex++) {
-		const speciesIndex = agentSpecies[agentIndex];
-		const speciesConfig = config.species[speciesIndex];
-
-		const sensorAngle = speciesConfig.sensorAngle;
-		const turnAngle = speciesConfig.turnAngle;
-		const sensorDist = speciesConfig.sensorDist;
-		const agentSpeed = speciesConfig.agentSpeed;
-		const depositAmount = speciesConfig.depositAmount;
-
-		const agentX = agentXPositions[agentIndex];
-		const agentY = agentYPositions[agentIndex];
-		let agentAngle = agentAngles[agentIndex];
-
-		const leftAngle = agentAngle - sensorAngle;
-		const rightAngle = agentAngle + sensorAngle;
-
-		const leftSensorX = Math.round(agentX + fastCos(leftAngle) * sensorDist);
-		const leftSensorY = Math.round(agentY + fastSin(leftAngle) * sensorDist);
-		const leftWrappedX = leftSensorX & GRID_COLS_MASK;
-		const leftWrappedY = leftSensorY & GRID_ROWS_MASK;
-		const leftSensor = sourceData[leftWrappedY * width + leftWrappedX];
-
-		const centerSensorX = Math.round(agentX + fastCos(agentAngle) * sensorDist);
-		const centerSensorY = Math.round(agentY + fastSin(agentAngle) * sensorDist);
-		const centerWrappedX = centerSensorX & GRID_COLS_MASK;
-		const centerWrappedY = centerSensorY & GRID_ROWS_MASK;
-		const centerSensor = sourceData[centerWrappedY * width + centerWrappedX];
-
-		const rightSensorX = Math.round(agentX + fastCos(rightAngle) * sensorDist);
-		const rightSensorY = Math.round(agentY + fastSin(rightAngle) * sensorDist);
-		const rightWrappedX = rightSensorX & GRID_COLS_MASK;
-		const rightWrappedY = rightSensorY & GRID_ROWS_MASK;
-		const rightSensor = sourceData[rightWrappedY * width + rightWrappedX];
-
-		if (centerSensor >= leftSensor && centerSensor >= rightSensor) {
-		} else if (leftSensor > rightSensor) {
-			agentAngle -= turnAngle;
-		} else if (rightSensor > leftSensor) {
-			agentAngle += turnAngle;
-		} else {
-			agentAngle += (Math.random() - 0.5) * 2 * turnAngle;
-		}
-
-		let newX = agentX + fastCos(agentAngle) * agentSpeed;
-		let newY = agentY + fastSin(agentAngle) * agentSpeed;
-
-		let hitEdge = false;
-
-		if (newX < 0) {
-			newX = -newX;
-			agentAngle = Math.PI - agentAngle;
-			hitEdge = true;
-		}
-		if (newX >= width) {
-			newX = 2 * width - newX - 1;
-			agentAngle = Math.PI - agentAngle;
-			hitEdge = true;
-		}
-		if (newY < 0) {
-			newY = -newY;
-			agentAngle = -agentAngle;
-			hitEdge = true;
-		}
-		if (newY >= height) {
-			newY = 2 * height - newY - 1;
-			agentAngle = -agentAngle;
-			hitEdge = true;
-		}
-
-		if (hitEdge) {
-			const penalty = 0.1;
-			newX = agentX + (newX - agentX) * penalty;
-			newY = agentY + (newY - agentY) * penalty;
-		}
-
-		agentXPositions[agentIndex] = newX;
-		agentYPositions[agentIndex] = newY;
-		agentAngles[agentIndex] = agentAngle;
-
-		const pixelX = Math.floor(newX);
-		const pixelY = Math.floor(newY);
-		const pixelIndex = pixelY * width + pixelX;
-
-		const currentVal = destData[pixelIndex];
-		const newPixelValue = currentVal + depositAmount;
-		destData[pixelIndex] = newPixelValue < 255 ? newPixelValue : 255;
-	}
-}

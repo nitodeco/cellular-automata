@@ -104,7 +104,7 @@ export const ExportControl = (props: Props) => {
 
 			<Show when={dropdownOpen() && !props.isExporting()}>
 				<div
-					class="glass-panel absolute bottom-full left-1/2 mb-2 min-w-[180px] z-20 pointer-events-auto flex flex-col rounded-xl"
+					class="glass-popover absolute bottom-full left-1/2 mb-2 min-w-[180px] z-20 pointer-events-auto flex flex-col rounded-xl"
 					style={{
 						transform: "translateX(-50%)",
 					}}

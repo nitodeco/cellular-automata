@@ -1,11 +1,13 @@
 import type { Accessor } from "solid-js";
-import { GRID_COLS, GRID_ROWS } from "../constants";
+import type { GridDimensions } from "../constants";
 
 interface Props {
 	fps: Accessor<number>;
 	frameTime: Accessor<number>;
 	agentCount: Accessor<number>;
 	stepCount: Accessor<number>;
+	resolutionScale: Accessor<number>;
+	gridDimensions: Accessor<GridDimensions>;
 }
 
 function getFpsColor(fps: number): string {
@@ -17,6 +19,11 @@ function getFpsColor(fps: number): string {
 function getFrameTimeColor(frameTime: number): string {
 	if (frameTime > 33) return "text-red-400";
 	if (frameTime > 16) return "text-yellow-400";
+	return "text-gray-100";
+}
+
+function getScaleColor(scale: number): string {
+	if (scale < 0.8) return "text-yellow-400";
 	return "text-gray-100";
 }
 
@@ -50,10 +57,15 @@ export const PerformancePanel = (props: Props) => {
 
 				<span class="text-gray-400">Resolution</span>
 				<span
-					class="tabular-nums text-right text-gray-100"
+					class={`tabular-nums text-right ${getScaleColor(props.resolutionScale())}`}
 					style={{ "grid-column": "2 / -1" }}
 				>
-					{GRID_COLS}×{GRID_ROWS}
+					{props.gridDimensions().cols}×{props.gridDimensions().rows}
+					{props.resolutionScale() < 1 && (
+						<span class="text-gray-500 ml-1">
+							@ {Math.round(props.resolutionScale() * 100)}%
+						</span>
+					)}
 				</span>
 			</div>
 		</div>

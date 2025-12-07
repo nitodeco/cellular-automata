@@ -62,9 +62,9 @@ docker run -p 8080:80 slime-mold-simulation
 
 ## Browser Support
 
-WebGPU is required for GPU acceleration. Check the [MDN docs](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API#browser_compatibility) for current browser support.
+WebGPU is required to run this simulation. Check the [MDN docs](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API#browser_compatibility) for current browser support.
 
-The simulation automatically falls back to CPU mode when WebGPU is unavailable, although at significantly reduced performance and a fixed limit of 50,000 agents.
+Supported browsers include Chrome 113+, Edge 113+, and Safari 18+.
 
 ## Attribution
 
