@@ -75,6 +75,9 @@ export function useSimulation() {
 			: DEFAULT_SLIME_CONFIG,
 	);
 	const [gpuAvailable, setGpuAvailable] = createSignal(false);
+	const [webGPUSupported, setWebGPUSupported] = createSignal<boolean | null>(
+		null,
+	);
 	const [useWebGPU, setUseWebGPU] = createSignal(
 		initialSettings?.useWebGPU ?? true,
 	);
@@ -87,8 +90,10 @@ export function useSimulation() {
 	const [averageFrameTime, setAverageFrameTime] = createSignal(0);
 	const [isExporting, setIsExporting] = createSignal(false);
 	const [isRecording, setIsRecording] = createSignal(false);
+	const [stepCount, setStepCount] = createSignal(0);
 
 	let isInitialLoad = true;
+	let internalStepCount = 0;
 
 	let engine: Engine | undefined;
 	const agentsRef: { current: AgentPool | null } = { current: null };
@@ -154,6 +159,7 @@ export function useSimulation() {
 			setCurrentBuffer(destination);
 		}
 
+		internalStepCount++;
 		const endTime = performance.now();
 		lastFrameTime = endTime - startTime;
 	}
@@ -173,6 +179,8 @@ export function useSimulation() {
 	}
 
 	function handleClear() {
+		internalStepCount = 0;
+		setStepCount(0);
 		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
 			gpuSimulation.clear();
 
@@ -387,6 +395,8 @@ export function useSimulation() {
 		};
 
 		setSlimeConfig(newConfig);
+		internalStepCount = 0;
+		setStepCount(0);
 
 		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
 			gpuSimulation.setConfig(newConfig);
@@ -430,6 +440,7 @@ export function useSimulation() {
 
 			if (canvasConfigured) {
 				setGpuAvailable(true);
+				setWebGPUSupported(true);
 				setGpuInitializing(false);
 
 				console.log("WebGPU acceleration enabled");
@@ -438,6 +449,7 @@ export function useSimulation() {
 				gpuSimulation = null;
 
 				setUseWebGPU(false);
+				setWebGPUSupported(false);
 				setGpuInitializing(false);
 
 				console.log(
@@ -446,6 +458,7 @@ export function useSimulation() {
 			}
 		} else {
 			setUseWebGPU(false);
+			setWebGPUSupported(false);
 			setGpuInitializing(false);
 
 			console.log("WebGPU not available, using CPU fallback (max 50k agents)");
@@ -676,6 +689,7 @@ export function useSimulation() {
 				setFps(engine.getFps());
 			}
 			setAverageFrameTime(lastFrameTime);
+			setStepCount(internalStepCount);
 		}, 500);
 
 		onCleanup(() => {
@@ -691,12 +705,14 @@ export function useSimulation() {
 		speed,
 		slimeConfig,
 		gpuAvailable,
+		webGPUSupported,
 		useWebGPU,
 		gpuInitializing,
 		canvasKey,
 		fps,
 		averageFrameTime,
 		agentCount,
+		stepCount,
 		isExporting,
 		lockedSettings,
 		handlePlayPause,

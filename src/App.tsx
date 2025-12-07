@@ -4,6 +4,7 @@ import { ControlDock } from "./components/ControlDock/ControlDock";
 import { ShareControl } from "./components/ControlDock/ShareControl";
 import { MobileWarningDialog } from "./components/MobileWarningDialog";
 import { PerformancePanel } from "./components/PerformancePanel";
+import { WebGPUWarningDialog } from "./components/WebGPUWarningDialog";
 import { useGridRenderer } from "./hooks/useGridRenderer";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { useSimulation } from "./hooks/useSimulation";
@@ -28,7 +29,7 @@ const App = () => {
 	);
 
 	return (
-		<div class="relative w-full h-screen overflow-hidden bg-gray-900">
+		<div class="relative w-full h-screen overflow-hidden bg-black">
 			<div class="absolute top-4 left-4 z-20 pointer-events-auto">
 				<ShareControl getShareUrl={simulationHook.getShareUrl} />
 			</div>
@@ -71,10 +72,15 @@ const App = () => {
 				fps={simulationHook.fps}
 				frameTime={simulationHook.averageFrameTime}
 				agentCount={simulationHook.agentCount}
+				stepCount={simulationHook.stepCount}
 			/>
 
 			<Show when={isMobile()}>
 				<MobileWarningDialog />
+			</Show>
+
+			<Show when={simulationHook.webGPUSupported() === false}>
+				<WebGPUWarningDialog />
 			</Show>
 		</div>
 	);

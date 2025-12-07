@@ -5,30 +5,56 @@ interface Props {
 	fps: Accessor<number>;
 	frameTime: Accessor<number>;
 	agentCount: Accessor<number>;
+	stepCount: Accessor<number>;
 }
 
-export const PerformancePanel = (props: Props) => {
+function getFpsColor(fps: number): string {
+	if (fps < 30) return "text-red-400";
+	if (fps < 60) return "text-yellow-400";
+	return "text-green-400";
+}
+
+function getFrameTimeColor(frameTime: number): string {
+	if (frameTime > 33) return "text-red-400";
+	if (frameTime > 16) return "text-yellow-400";
+	return "text-gray-100";
+}
+
+export const PerformancePanel: React.FC<Props> = (props) => {
 	return (
-		<div class="glass-panel absolute top-4 right-4 text-white p-3.5 rounded-xl font-mono text-xs z-20 pointer-events-none select-none">
-			<div class="flex flex-col gap-1.5">
-				<div class="flex justify-between gap-4">
-					<span class="text-gray-300">FPS:</span>
-					<span class="font-bold text-green-400">{props.fps()}</span>
-				</div>
-				<div class="flex justify-between gap-4">
-					<span class="text-gray-300">Frame Time:</span>
-					<span>{props.frameTime().toFixed(2)}ms</span>
-				</div>
-				<div class="flex justify-between gap-4">
-					<span class="text-gray-300">Agents:</span>
-					<span>{props.agentCount().toLocaleString()}</span>
-				</div>
-				<div class="flex justify-between gap-4">
-					<span class="text-gray-300">Grid:</span>
-					<span>
-						{GRID_COLS}x{GRID_ROWS}
-					</span>
-				</div>
+		<div class="glass-panel absolute top-4 right-4 text-white px-3 py-2 rounded-lg font-mono text-[11px] z-20 pointer-events-none select-none">
+			<div class="grid grid-cols-[auto_1fr_auto_auto_1fr] gap-x-2 gap-y-0.5 items-center">
+				<span class="text-gray-400">FPS</span>
+				<span
+					class={`font-semibold tabular-nums text-right ${getFpsColor(props.fps())}`}
+				>
+					{props.fps()}
+				</span>
+				<span class="text-gray-600">·</span>
+				<span class="text-gray-400">Step</span>
+				<span class="tabular-nums text-right text-gray-100">
+					{props.stepCount().toLocaleString()}
+				</span>
+
+				<span class="text-gray-400">Time</span>
+				<span
+					class={`tabular-nums text-right ${getFrameTimeColor(props.frameTime())}`}
+				>
+					{props.frameTime().toFixed(1)}ms
+				</span>
+				<span class="text-gray-600">·</span>
+				<span class="text-gray-400">Agents</span>
+				<span class="tabular-nums text-right text-gray-100">
+					{props.agentCount().toLocaleString()}
+				</span>
+
+				<span class="text-gray-400">Grid</span>
+				<span
+					class="tabular-nums text-right text-gray-100"
+					style={{ "grid-column": "2 / -1" }}
+				>
+					{GRID_COLS}×{GRID_ROWS}
+				</span>
 			</div>
 		</div>
 	);

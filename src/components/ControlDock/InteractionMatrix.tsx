@@ -62,7 +62,7 @@ export const InteractionMatrix = (props: InteractionMatrixProps) => {
 	};
 
 	return (
-		<div class="glass-panel-subtle flex flex-col gap-4 p-3 rounded-xl">
+		<div class="glass-panel-subtle flex flex-col gap-4 p-3 rounded-xl h-full">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-1 text-xs font-medium text-gray-200 uppercase tracking-wider">
 					<LockButton locked={props.locked} onToggle={props.onToggleLock} />
@@ -73,7 +73,7 @@ export const InteractionMatrix = (props: InteractionMatrixProps) => {
 						<button
 							type="button"
 							onClick={toggle}
-							class="text-[10px] uppercase font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
+							class="text-[10px] uppercase font-medium text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
 						>
 							Presets
 						</button>
@@ -86,7 +86,7 @@ export const InteractionMatrix = (props: InteractionMatrixProps) => {
 									<button
 										type="button"
 										onClick={() => applyPreset(preset.matrix, close)}
-										class="text-left px-2.5 py-1.5 text-xs hover:bg-white/10 rounded-xl text-gray-300 hover:text-white transition-all"
+										class="text-left px-2.5 py-1.5 text-xs hover:bg-white/10 rounded-xl text-gray-300 hover:text-white transition-all cursor-pointer"
 									>
 										{preset.name}
 									</button>
@@ -136,7 +136,7 @@ export const InteractionMatrix = (props: InteractionMatrixProps) => {
 															Number.parseFloat(e.currentTarget.value),
 														)
 													}
-													class="glass-input w-full text-center text-xs p-1.5 rounded-xl outline-none appearance-none"
+													class="glass-input w-full text-center text-xs p-1.5 rounded-xl outline-none appearance-none cursor-pointer"
 													style={{
 														"border-color":
 															getCellColor(val) || "rgba(255, 255, 255, 0.1)",

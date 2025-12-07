@@ -87,7 +87,7 @@ export const SpeciesControl = (props: SpeciesControlProps) => {
 							<button
 								type="button"
 								onClick={toggle}
-								class="w-24 h-7 rounded-xl cursor-pointer transition-all hover:scale-105"
+								class="w-24 h-7 rounded-xl cursor-pointer transition-all"
 								style={{
 									"background-image": `linear-gradient(90deg, ${currentPreset.low}, ${currentPreset.mid}, ${currentPreset.high})`,
 									border: "1px solid rgba(255, 255, 255, 0.2)",
@@ -241,7 +241,7 @@ export const SpeciesTabs = (props: SpeciesTabsProps) => {
 	const [activeTab, setActiveTab] = createSignal(0);
 
 	return (
-		<div class="glass-panel-subtle flex flex-col gap-4 p-3 rounded-xl">
+		<div class="glass-panel-subtle flex flex-col gap-4 p-3 rounded-xl h-full">
 			<div class="flex gap-1 border-b border-white/10 pb-2">
 				<For each={[0, 1, 2]}>
 					{(index) => {
@@ -250,7 +250,7 @@ export const SpeciesTabs = (props: SpeciesTabsProps) => {
 							<button
 								type="button"
 								onClick={() => setActiveTab(index)}
-								class={`flex-1 py-1.5 px-2 text-[10px] uppercase font-medium tracking-wider rounded-xl transition-all ${
+								class={`flex-1 py-1.5 px-2 text-[10px] uppercase font-medium tracking-wider rounded-xl transition-all cursor-pointer ${
 									activeTab() === index
 										? "glass-button text-white"
 										: "text-gray-400 hover:text-gray-200 hover:bg-white/5"
@@ -269,13 +269,15 @@ export const SpeciesTabs = (props: SpeciesTabsProps) => {
 				</For>
 			</div>
 
-			<SpeciesControl
-				index={activeTab()}
-				config={props.configs[activeTab()]}
-				lockedSettings={props.lockedSettings[activeTab()]}
-				onChange={props.onChange}
-				onToggleLock={(key) => props.onToggleLock(activeTab(), key)}
-			/>
+			<div class="flex-1 flex flex-col">
+				<SpeciesControl
+					index={activeTab()}
+					config={props.configs[activeTab()]}
+					lockedSettings={props.lockedSettings[activeTab()]}
+					onChange={props.onChange}
+					onToggleLock={(key) => props.onToggleLock(activeTab(), key)}
+				/>
+			</div>
 		</div>
 	);
 };

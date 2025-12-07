@@ -60,42 +60,50 @@ export const SlimeMoldControls = (props: SlimeMoldControlsProps) => {
 	const locked = () => props.lockedSettings();
 
 	return (
-		<div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4">
-			<SliderControl
-				label="Decay Rate"
-				displayValue={config().decayRate.toFixed(1)}
-				value={config().decayRate}
-				min={0.1}
-				max={20}
-				step={0.1}
-				onChange={(value) => props.onSlimeConfigChange("decayRate", value)}
-				locked={locked().decayRate}
-				onToggleLock={() => props.onToggleLock("decayRate")}
-			/>
+		<div class="glass-panel-subtle flex flex-row gap-4 p-3 rounded-xl w-full">
+			<div class="flex-1">
+				<SliderControl
+					label="Decay Rate"
+					displayValue={config().decayRate.toFixed(1)}
+					value={config().decayRate}
+					min={0.1}
+					max={20}
+					step={0.1}
+					onChange={(value) => props.onSlimeConfigChange("decayRate", value)}
+					locked={locked().decayRate}
+					onToggleLock={() => props.onToggleLock("decayRate")}
+				/>
+			</div>
 
-			<SliderControl
-				label="Diffuse Weight"
-				displayValue={config().diffuseWeight.toFixed(2)}
-				value={config().diffuseWeight}
-				min={0}
-				max={1}
-				step={0.05}
-				onChange={(value) => props.onSlimeConfigChange("diffuseWeight", value)}
-				locked={locked().diffuseWeight}
-				onToggleLock={() => props.onToggleLock("diffuseWeight")}
-			/>
+			<div class="flex-1">
+				<SliderControl
+					label="Diffuse Weight"
+					displayValue={config().diffuseWeight.toFixed(2)}
+					value={config().diffuseWeight}
+					min={0}
+					max={1}
+					step={0.05}
+					onChange={(value) =>
+						props.onSlimeConfigChange("diffuseWeight", value)
+					}
+					locked={locked().diffuseWeight}
+					onToggleLock={() => props.onToggleLock("diffuseWeight")}
+				/>
+			</div>
 
-			<SliderControl
-				label="Total Agents"
-				displayValue={`${config().agentCount}%`}
-				value={config().agentCount}
-				min={0.5}
-				max={20}
-				step={0.5}
-				onChange={(value) => props.onSlimeConfigChange("agentCount", value)}
-				locked={locked().agentCount}
-				onToggleLock={() => props.onToggleLock("agentCount")}
-			/>
+			<div class="flex-1">
+				<SliderControl
+					label="Total Agents"
+					displayValue={`${config().agentCount}%`}
+					value={config().agentCount}
+					min={0.5}
+					max={20}
+					step={0.5}
+					onChange={(value) => props.onSlimeConfigChange("agentCount", value)}
+					locked={locked().agentCount}
+					onToggleLock={() => props.onToggleLock("agentCount")}
+				/>
+			</div>
 		</div>
 	);
 };

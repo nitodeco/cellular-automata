@@ -90,7 +90,12 @@ export const ExportControl = (props: Props) => {
 			</Button>
 
 			<Show when={dropdownOpen() && !props.isExporting()}>
-				<div class="glass-panel absolute bottom-full left-1/2 -translate-x-1/2 mb-2 min-w-[180px] z-20 pointer-events-auto flex flex-col rounded-xl">
+				<div
+					class="glass-panel absolute bottom-full left-1/2 mb-2 min-w-[180px] z-20 pointer-events-auto flex flex-col rounded-xl"
+					style={{
+						transform: "translateX(-50%)",
+					}}
+				>
 					<div class="p-2.5 border-b border-white/10">
 						<div class="text-[10px] uppercase text-gray-200 mb-1.5 font-medium tracking-wider">
 							Video

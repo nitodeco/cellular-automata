@@ -354,7 +354,7 @@ function tickAndRender(state: GPUSimulationState): void {
 			colorAttachments: [
 				{
 					view: textureView,
-					clearValue: { r: 0.039, g: 0.039, b: 0.059, a: 1.0 },
+					clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
 					loadOp: "clear",
 					storeOp: "store",
 				},
@@ -393,7 +393,7 @@ function render(state: GPUSimulationState): void {
 			colorAttachments: [
 				{
 					view: textureView,
-					clearValue: { r: 0.039, g: 0.039, b: 0.059, a: 1.0 },
+					clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
 					loadOp: "clear",
 					storeOp: "store",
 				},
@@ -564,7 +564,7 @@ async function exportScreenshot(
 		colorAttachments: [
 			{
 				view: textureView,
-				clearValue: { r: 0.039, g: 0.039, b: 0.059, a: 1.0 },
+				clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
 				loadOp: "clear",
 				storeOp: "store",
 			},

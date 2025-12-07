@@ -1,4 +1,5 @@
-import { Pause, Play, Shuffle, Trash2 } from "lucide-solid";
+import { Pause, Play, RotateCcw, Sparkles } from "lucide-solid";
+import { Show } from "solid-js";
 import { Button } from "../Button";
 
 interface PlaybackControlsProps {
@@ -11,14 +12,28 @@ interface PlaybackControlsProps {
 export const PlaybackControls = (props: PlaybackControlsProps) => {
 	return (
 		<div class="flex flex-wrap justify-center items-center gap-3">
-			<Button
-				onClick={props.onPlayPause}
-				variant={props.running() ? "stop" : "play"}
-				class="px-4 py-2 min-w-[48px] flex items-center justify-center"
-				aria-label={props.running() ? "Pause" : "Play"}
+			<Show
+				when={props.running()}
+				fallback={
+					<Button
+						onClick={props.onPlayPause}
+						variant="play"
+						class="px-4 py-2 min-w-[48px] flex items-center justify-center"
+						aria-label="Play"
+					>
+						<Play class="w-5 h-5" />
+					</Button>
+				}
 			>
-				{props.running() ? <Pause class="w-5 h-5" /> : <Play class="w-5 h-5" />}
-			</Button>
+				<Button
+					onClick={props.onPlayPause}
+					variant="stop"
+					class="px-4 py-2 min-w-[48px] flex items-center justify-center"
+					aria-label="Pause"
+				>
+					<Pause class="w-5 h-5" />
+				</Button>
+			</Show>
 
 			<Button
 				onClick={props.onRandomize}
@@ -26,7 +41,7 @@ export const PlaybackControls = (props: PlaybackControlsProps) => {
 				class="px-4 py-2 min-w-[48px] flex items-center justify-center"
 				aria-label="Randomize settings"
 			>
-				<Shuffle class="w-5 h-5" />
+				<Sparkles class="w-5 h-5" />
 			</Button>
 
 			<div class="h-8 w-px bg-white/10 mx-2 hidden md:block" />
@@ -34,9 +49,9 @@ export const PlaybackControls = (props: PlaybackControlsProps) => {
 			<Button
 				onClick={props.onClear}
 				class="px-4 py-2 min-w-[48px] flex items-center justify-center"
-				aria-label="Clear"
+				aria-label="Reset"
 			>
-				<Trash2 class="w-5 h-5" />
+				<RotateCcw class="w-5 h-5" />
 			</Button>
 		</div>
 	);

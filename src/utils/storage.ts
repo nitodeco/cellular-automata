@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type {
 	ColorPresetName,
 	SlimeConfig,
@@ -61,7 +60,7 @@ export const DEFAULT_LOCKED_SETTINGS: LockedSettings = {
 export const SIMULATION_SETTINGS_KEY = "simulation-settings";
 export const LOCKED_SETTINGS_KEY = "locked-settings";
 
-const colorPresetNameSchema = z.enum([
+const VALID_COLOR_PRESET_NAMES: readonly ColorPresetName[] = [
 	"neon",
 	"ocean",
 	"ember",
@@ -74,46 +73,110 @@ const colorPresetNameSchema = z.enum([
 	"plasma",
 	"aurora",
 	"fire",
-] satisfies [ColorPresetName, ...ColorPresetName[]]);
+] as const;
 
-const spawnPatternSchema = z.enum([
+const VALID_SPAWN_PATTERNS: readonly SpawnPattern[] = [
 	"random",
 	"center",
 	"circle",
 	"multiCircle",
 	"spiral",
-] satisfies [SpawnPattern, ...SpawnPattern[]]);
+] as const;
 
-const speciesConfigSchema: z.ZodType<SpeciesConfig> = z.object({
-	sensorAngle: z.number(),
-	turnAngle: z.number(),
-	sensorDist: z.number(),
-	agentSpeed: z.number(),
-	depositAmount: z.number(),
-	colorPreset: colorPresetNameSchema,
-	agentCount: z.number(),
-});
+function isValidColorPresetName(value: unknown): value is ColorPresetName {
+	return (
+		typeof value === "string" &&
+		VALID_COLOR_PRESET_NAMES.includes(value as ColorPresetName)
+	);
+}
 
-const slimeConfigSchema: z.ZodType<SlimeConfig> = z.object({
-	decayRate: z.number(),
-	diffuseWeight: z.number(),
-	spawnPattern: spawnPatternSchema,
-	agentCount: z.number(),
-	species: z.tuple([
-		speciesConfigSchema,
-		speciesConfigSchema,
-		speciesConfigSchema,
-	]),
-	interactions: z
-		.array(z.tuple([z.number(), z.number(), z.number()]))
-		.length(3),
-});
+function isValidSpawnPattern(value: unknown): value is SpawnPattern {
+	return (
+		typeof value === "string" &&
+		VALID_SPAWN_PATTERNS.includes(value as SpawnPattern)
+	);
+}
 
-const simulationSettingsSchema: z.ZodType<SimulationSettings> = z.object({
-	speed: z.number(),
-	slimeConfig: slimeConfigSchema,
-	useWebGPU: z.boolean(),
-});
+function isValidSpeciesConfig(value: unknown): value is SpeciesConfig {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
+
+	const config = value as Record<string, unknown>;
+
+	return (
+		typeof config.sensorAngle === "number" &&
+		typeof config.turnAngle === "number" &&
+		typeof config.sensorDist === "number" &&
+		typeof config.agentSpeed === "number" &&
+		typeof config.depositAmount === "number" &&
+		isValidColorPresetName(config.colorPreset) &&
+		typeof config.agentCount === "number"
+	);
+}
+
+function isValidSlimeConfig(value: unknown): value is SlimeConfig {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
+
+	const config = value as Record<string, unknown>;
+
+	if (
+		typeof config.decayRate !== "number" ||
+		typeof config.diffuseWeight !== "number" ||
+		!isValidSpawnPattern(config.spawnPattern) ||
+		typeof config.agentCount !== "number"
+	) {
+		return false;
+	}
+
+	if (!Array.isArray(config.species) || config.species.length !== 3) {
+		return false;
+	}
+
+	if (
+		!isValidSpeciesConfig(config.species[0]) ||
+		!isValidSpeciesConfig(config.species[1]) ||
+		!isValidSpeciesConfig(config.species[2])
+	) {
+		return false;
+	}
+
+	if (!Array.isArray(config.interactions) || config.interactions.length !== 3) {
+		return false;
+	}
+
+	for (const interaction of config.interactions) {
+		if (
+			!Array.isArray(interaction) ||
+			interaction.length !== 3 ||
+			typeof interaction[0] !== "number" ||
+			typeof interaction[1] !== "number" ||
+			typeof interaction[2] !== "number"
+		) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function isValidSimulationSettings(
+	value: unknown,
+): value is SimulationSettings {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
+
+	const settings = value as Record<string, unknown>;
+
+	return (
+		typeof settings.speed === "number" &&
+		isValidSlimeConfig(settings.slimeConfig) &&
+		typeof settings.useWebGPU === "boolean"
+	);
+}
 
 export function loadSimulationSettings(): SimulationSettings | null {
 	try {
@@ -123,9 +186,7 @@ export function loadSimulationSettings(): SimulationSettings | null {
 		}
 
 		const parsed = JSON.parse(stored);
-		const result = simulationSettingsSchema.safeParse(parsed);
-
-		return result.success ? result.data : null;
+		return isValidSimulationSettings(parsed) ? parsed : null;
 	} catch {
 		return null;
 	}
@@ -146,36 +207,59 @@ export function decodeSimulationSettings(
 ): SimulationSettings | null {
 	try {
 		const parsed = JSON.parse(atob(encoded));
-		const result = simulationSettingsSchema.safeParse(parsed);
-
-		return result.success ? result.data : null;
+		return isValidSimulationSettings(parsed) ? parsed : null;
 	} catch {
 		return null;
 	}
 }
 
-const speciesLockedSettingsSchema: z.ZodType<SpeciesLockedSettings> = z.object({
-	sensorAngle: z.boolean(),
-	turnAngle: z.boolean(),
-	sensorDist: z.boolean(),
-	agentSpeed: z.boolean(),
-	depositAmount: z.boolean(),
-	colorPreset: z.boolean(),
-	agentCount: z.boolean(),
-});
+function isValidSpeciesLockedSettings(
+	value: unknown,
+): value is SpeciesLockedSettings {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
 
-const lockedSettingsSchema: z.ZodType<LockedSettings> = z.object({
-	decayRate: z.boolean(),
-	diffuseWeight: z.boolean(),
-	agentCount: z.boolean(),
-	spawnPattern: z.boolean(),
-	interactions: z.boolean(),
-	species: z.tuple([
-		speciesLockedSettingsSchema,
-		speciesLockedSettingsSchema,
-		speciesLockedSettingsSchema,
-	]),
-});
+	const settings = value as Record<string, unknown>;
+
+	return (
+		typeof settings.sensorAngle === "boolean" &&
+		typeof settings.turnAngle === "boolean" &&
+		typeof settings.sensorDist === "boolean" &&
+		typeof settings.agentSpeed === "boolean" &&
+		typeof settings.depositAmount === "boolean" &&
+		typeof settings.colorPreset === "boolean" &&
+		typeof settings.agentCount === "boolean"
+	);
+}
+
+function isValidLockedSettings(value: unknown): value is LockedSettings {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
+
+	const settings = value as Record<string, unknown>;
+
+	if (
+		typeof settings.decayRate !== "boolean" ||
+		typeof settings.diffuseWeight !== "boolean" ||
+		typeof settings.agentCount !== "boolean" ||
+		typeof settings.spawnPattern !== "boolean" ||
+		typeof settings.interactions !== "boolean"
+	) {
+		return false;
+	}
+
+	if (!Array.isArray(settings.species) || settings.species.length !== 3) {
+		return false;
+	}
+
+	return (
+		isValidSpeciesLockedSettings(settings.species[0]) &&
+		isValidSpeciesLockedSettings(settings.species[1]) &&
+		isValidSpeciesLockedSettings(settings.species[2])
+	);
+}
 
 export function loadLockedSettings(): LockedSettings | null {
 	try {
@@ -185,9 +269,7 @@ export function loadLockedSettings(): LockedSettings | null {
 		}
 
 		const parsed = JSON.parse(stored);
-		const result = lockedSettingsSchema.safeParse(parsed);
-
-		return result.success ? result.data : null;
+		return isValidLockedSettings(parsed) ? parsed : null;
 	} catch {
 		return null;
 	}

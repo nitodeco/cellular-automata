@@ -16,8 +16,7 @@ export const Button = (props: Props) => {
 		default: "",
 		play: "!bg-gradient-to-br !from-green-500/25 !to-green-600/15 !border-green-400/25 hover:!border-green-400/40 text-green-100",
 		stop: "!bg-gradient-to-br !from-red-500/25 !to-red-600/15 !border-red-400/25 hover:!border-red-400/40 text-red-100",
-		accent:
-			"!bg-gradient-to-br !from-cyan-500/25 !to-cyan-600/15 !border-cyan-400/25 hover:!border-cyan-400/40 text-cyan-100",
+		accent: "button-gradient-accent text-white",
 	};
 
 	const variant = props.variant ?? "default";

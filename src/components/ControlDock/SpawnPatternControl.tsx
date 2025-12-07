@@ -23,7 +23,7 @@ export const SpawnPatternControl = (props: SpawnPatternControlProps) => {
 	}
 
 	return (
-		<div class="glass-panel-subtle flex items-center gap-3 px-3 py-2 rounded-xl">
+		<div class="flex items-center gap-3 h-[36px]">
 			<div class="flex items-center gap-1">
 				<LockButton locked={props.locked} onToggle={props.onToggleLock} />
 				<span class="text-gray-200 text-[10px] uppercase tracking-wider font-medium">

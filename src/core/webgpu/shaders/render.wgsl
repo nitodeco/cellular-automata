@@ -60,7 +60,7 @@ fn fragmentMain(input: VertexOutput) -> @location(0) vec4<f32> {
   let uv = input.uv;
 
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
-    return vec4<f32>(0.039, 0.039, 0.059, 1.0);
+    return vec4<f32>(0.0, 0.0, 0.0, 1.0);
   }
 
   let pixelX = u32(min(uv.x * config.size.x, config.size.x - 1.0));
@@ -75,7 +75,7 @@ fn fragmentMain(input: VertexOutput) -> @location(0) vec4<f32> {
   let intensity2 = clamp(val2 / 255.0, 0.0, 1.0);
   let intensity3 = clamp(val3 / 255.0, 0.0, 1.0);
 
-  let baseColor = vec3<f32>(0.039, 0.039, 0.059);
+  let baseColor = vec3<f32>(0.0, 0.0, 0.0);
   
   let color1 = getGradientColor(intensity1, config.species1);
   let color2 = getGradientColor(intensity2, config.species2);

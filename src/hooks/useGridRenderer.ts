@@ -9,7 +9,7 @@ import {
 } from "../core/slime";
 import type { Viewport } from "./useViewport";
 
-const baseColorValue = Math.round(0.039 * 255);
+const baseColorValue = 0;
 const baseColor = {
 	red: baseColorValue,
 	green: baseColorValue,
@@ -67,7 +67,7 @@ export function useGridRenderer(
 		const { width, height } = canvasSize();
 		const { x, y, zoom } = viewport();
 
-		ctx.fillStyle = "#0a0a0f";
+		ctx.fillStyle = "#000000";
 		ctx.fillRect(0, 0, width, height);
 
 		const currentGrid = grid();
