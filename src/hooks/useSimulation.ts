@@ -90,6 +90,9 @@ export function useSimulation() {
 	const [stepCount, setStepCount] = createSignal(0);
 	const [resolutionScale, setResolutionScale] =
 		createSignal(MAX_RESOLUTION_SCALE);
+	const [shifting, setShifting] = createSignal(false);
+	const [shiftTargetConfig, setShiftTargetConfig] =
+		createSignal<SlimeConfig | null>(null);
 
 	let isInitialLoad = true;
 	let internalStepCount = 0;
@@ -103,6 +106,10 @@ export function useSimulation() {
 	let recordedChunks: Blob[] = [];
 	let gpuInitialized = false;
 	let lastFrameTime = 0;
+	let shiftInterpolationIntervalId: number | null = null;
+	let shiftTargetUpdateIntervalId: number | null = null;
+	const SHIFT_INTERPOLATION_FACTOR = 0.015;
+	const SHIFT_TARGET_UPDATE_INTERVAL = 5000;
 
 	const gridDimensions = createMemo(() => {
 		return getGridDimensions(resolutionScale());
@@ -114,6 +121,7 @@ export function useSimulation() {
 
 	function speedToInterval(speedValue: number): number {
 		const interval = 100 - speedValue;
+
 		return interval === 0 ? 1 : interval;
 	}
 
@@ -122,6 +130,7 @@ export function useSimulation() {
 		dimensions?: { cols: number; rows: number },
 	): number {
 		const dims = dimensions ?? gridDimensions();
+
 		return Math.floor(dims.rows * dims.cols * (config.agentCount / 100));
 	}
 
@@ -238,21 +247,163 @@ export function useSimulation() {
 		key: keyof SpeciesLockedSettings,
 	) {
 		const current = lockedSettings();
+
 		const newSpecies = [...current.species] as [
 			SpeciesLockedSettings,
 			SpeciesLockedSettings,
 			SpeciesLockedSettings,
 		];
+
 		newSpecies[speciesIndex] = {
 			...newSpecies[speciesIndex],
 			[key]: !newSpecies[speciesIndex][key],
 		};
+
 		const newSettings = {
 			...current,
 			species: newSpecies,
 		};
+
 		setLockedSettings(newSettings);
 		saveLockedSettings(newSettings);
+	}
+
+	function roundToTwoDecimals(value: number): number {
+		return Math.round(value * 100) / 100;
+	}
+
+	function generateRandomTargetConfig(): SlimeConfig {
+		const currentConfig = slimeConfig();
+		const locks = lockedSettings();
+
+		const randomSpecies = currentConfig.species.map((species, index) => {
+			const speciesLocks = locks.species[index];
+
+			return {
+				...species,
+				sensorAngle: speciesLocks.sensorAngle
+					? species.sensorAngle
+					: roundToTwoDecimals(
+							clampedGaussianRandom(
+								(10 * Math.PI) / 180,
+								(90 * Math.PI) / 180,
+								(45 * Math.PI) / 180,
+								(20 * Math.PI) / 180,
+							),
+						),
+				turnAngle: speciesLocks.turnAngle
+					? species.turnAngle
+					: roundToTwoDecimals(
+							clampedGaussianRandom(
+								(10 * Math.PI) / 180,
+								(90 * Math.PI) / 180,
+								(45 * Math.PI) / 180,
+								(20 * Math.PI) / 180,
+							),
+						),
+				sensorDist: speciesLocks.sensorDist
+					? species.sensorDist
+					: roundToTwoDecimals(clampedGaussianRandom(5, 35, 15, 8)),
+				depositAmount: speciesLocks.depositAmount
+					? species.depositAmount
+					: roundToTwoDecimals(clampedGaussianRandom(20, 150, 60, 30)),
+				agentSpeed: speciesLocks.agentSpeed
+					? species.agentSpeed
+					: roundToTwoDecimals(clampedGaussianRandom(0.5, 3, 1.5, 0.5)),
+				colorPreset: species.colorPreset,
+				agentCount: species.agentCount,
+			};
+		}) as [SpeciesConfig, SpeciesConfig, SpeciesConfig];
+
+		const randomInteractions = locks.interactions
+			? currentConfig.interactions
+			: Array(3)
+					.fill(0)
+					.map((_, rowIndex) =>
+						Array(3)
+							.fill(0)
+							.map((_, colIndex) => {
+								if (rowIndex === colIndex) {
+									return roundToTwoDecimals(
+										clampedGaussianRandom(0.5, 1, 0.8, 0.2),
+									);
+								}
+								return roundToTwoDecimals(
+									clampedGaussianRandom(-0.5, 0.5, 0, 0.3),
+								);
+							}),
+					);
+
+		return {
+			...currentConfig,
+			decayRate: locks.decayRate
+				? currentConfig.decayRate
+				: roundToTwoDecimals(clampedGaussianRandom(0.5, 8, 2.5, 2)),
+			diffuseWeight: locks.diffuseWeight
+				? currentConfig.diffuseWeight
+				: roundToTwoDecimals(clampedGaussianRandom(0.05, 0.5, 0.15, 0.1)),
+			agentCount: currentConfig.agentCount,
+			enabledSpawnPatterns: currentConfig.enabledSpawnPatterns,
+			species: randomSpecies,
+			interactions: randomInteractions,
+		};
+	}
+
+	function lerp(start: number, end: number, factor: number): number {
+		return start + (end - start) * factor;
+	}
+
+	function interpolateConfig(
+		current: SlimeConfig,
+		target: SlimeConfig,
+		factor: number,
+	): SlimeConfig {
+		const interpolatedSpecies = current.species.map((currentSpecies, index) => {
+			const targetSpecies = target.species[index];
+
+			return {
+				...currentSpecies,
+				sensorAngle: roundToTwoDecimals(
+					lerp(currentSpecies.sensorAngle, targetSpecies.sensorAngle, factor),
+				),
+				turnAngle: roundToTwoDecimals(
+					lerp(currentSpecies.turnAngle, targetSpecies.turnAngle, factor),
+				),
+				sensorDist: roundToTwoDecimals(
+					lerp(currentSpecies.sensorDist, targetSpecies.sensorDist, factor),
+				),
+				depositAmount: roundToTwoDecimals(
+					lerp(
+						currentSpecies.depositAmount,
+						targetSpecies.depositAmount,
+						factor,
+					),
+				),
+				agentSpeed: roundToTwoDecimals(
+					lerp(currentSpecies.agentSpeed, targetSpecies.agentSpeed, factor),
+				),
+			};
+		}) as [SpeciesConfig, SpeciesConfig, SpeciesConfig];
+
+		const interpolatedInteractions = current.interactions.map((row, rowIndex) =>
+			row.map((value, colIndex) =>
+				roundToTwoDecimals(
+					lerp(value, target.interactions[rowIndex][colIndex], factor),
+				),
+			),
+		);
+
+		return {
+			...current,
+			decayRate: roundToTwoDecimals(
+				lerp(current.decayRate, target.decayRate, factor),
+			),
+			diffuseWeight: roundToTwoDecimals(
+				lerp(current.diffuseWeight, target.diffuseWeight, factor),
+			),
+			species: interpolatedSpecies,
+			interactions: interpolatedInteractions,
+		};
 	}
 
 	function handleRandomize() {
@@ -263,6 +414,7 @@ export function useSimulation() {
 
 		const randomSpecies = currentConfig.species.map((species, index) => {
 			const speciesLocks = locks.species[index];
+
 			return {
 				...species,
 				sensorAngle: speciesLocks.sensorAngle
@@ -361,6 +513,27 @@ export function useSimulation() {
 		}
 	}
 
+	function handleToggleShifting() {
+		const newShiftingState = !shifting();
+		setShifting(newShiftingState);
+
+		if (newShiftingState) {
+			setShiftTargetConfig(generateRandomTargetConfig());
+		} else {
+			setShiftTargetConfig(null);
+
+			if (shiftInterpolationIntervalId !== null) {
+				clearInterval(shiftInterpolationIntervalId);
+				shiftInterpolationIntervalId = null;
+			}
+
+			if (shiftTargetUpdateIntervalId !== null) {
+				clearInterval(shiftTargetUpdateIntervalId);
+				shiftTargetUpdateIntervalId = null;
+			}
+		}
+	}
+
 	async function initGPU() {
 		if (gpuInitialized || !canvasRef) {
 			return;
@@ -430,6 +603,7 @@ export function useSimulation() {
 		canvas.height = height;
 
 		const context = canvas.getContext("2d");
+
 		if (!context) {
 			console.error("Failed to get 2D context for export canvas");
 			return;
@@ -466,7 +640,9 @@ export function useSimulation() {
 				mediaRecorder.stop();
 			}
 		} else {
-			if (!canvasRef) return;
+			if (!canvasRef) {
+				return;
+			}
 
 			try {
 				const actualFps = Math.min(60, fps() || 60);
@@ -479,9 +655,11 @@ export function useSimulation() {
 				];
 
 				let selectedCodec = codecOptions[codecOptions.length - 1];
+
 				for (const codec of codecOptions) {
 					if (MediaRecorder.isTypeSupported(codec.mimeType)) {
 						selectedCodec = codec;
+
 						break;
 					}
 				}
@@ -543,6 +721,7 @@ export function useSimulation() {
 		if (!gpuAvailable() || !gpuSimulation || !running()) {
 			lowFpsConsecutiveChecks = 0;
 			highFpsConsecutiveChecks = 0;
+
 			return;
 		}
 
@@ -557,6 +736,7 @@ export function useSimulation() {
 					MIN_RESOLUTION_SCALE,
 					Math.round((currentScale - RESOLUTION_SCALE_STEP) * 100) / 100,
 				);
+
 				applyResolutionScale(newScale);
 				lowFpsConsecutiveChecks = 0;
 			}
@@ -572,6 +752,7 @@ export function useSimulation() {
 					MAX_RESOLUTION_SCALE,
 					Math.round((currentScale + RESOLUTION_SCALE_STEP) * 100) / 100,
 				);
+
 				applyResolutionScale(newScale);
 				highFpsConsecutiveChecks = 0;
 			}
@@ -582,7 +763,9 @@ export function useSimulation() {
 	}
 
 	function applyResolutionScale(newScale: number): void {
-		if (!gpuSimulation) return;
+		if (!gpuSimulation) {
+			return;
+		}
 
 		setResolutionScale(newScale);
 		const newDimensions = getGridDimensions(newScale);
@@ -600,6 +783,7 @@ export function useSimulation() {
 			...DEFAULT_SLIME_CONFIG,
 			...settings.slimeConfig,
 		};
+
 		setSlimeConfig(newConfig);
 
 		if (gpuSimulation) {
@@ -625,6 +809,55 @@ export function useSimulation() {
 		});
 	});
 
+	createEffect(() => {
+		if (!shifting()) {
+			return;
+		}
+
+		const interpolationInterval = setInterval(() => {
+			if (!running()) {
+				return;
+			}
+
+			const current = slimeConfig();
+			const target = shiftTargetConfig();
+
+			if (!target) {
+				return;
+			}
+
+			const interpolated = interpolateConfig(
+				current,
+				target,
+				SHIFT_INTERPOLATION_FACTOR,
+			);
+
+			setSlimeConfig(interpolated);
+
+			if (gpuSimulation) {
+				gpuSimulation.setConfig(interpolated);
+			}
+		}, 16);
+
+		const targetUpdateInterval = setInterval(() => {
+			if (!running()) {
+				return;
+			}
+
+			setShiftTargetConfig(generateRandomTargetConfig());
+		}, SHIFT_TARGET_UPDATE_INTERVAL);
+
+		shiftInterpolationIntervalId = interpolationInterval;
+		shiftTargetUpdateIntervalId = targetUpdateInterval;
+
+		onCleanup(() => {
+			clearInterval(interpolationInterval);
+			clearInterval(targetUpdateInterval);
+			shiftInterpolationIntervalId = null;
+			shiftTargetUpdateIntervalId = null;
+		});
+	});
+
 	onMount(() => {
 		isInitialLoad = false;
 
@@ -637,6 +870,7 @@ export function useSimulation() {
 				setFps(currentFps);
 				adjustResolutionScale(currentFps);
 			}
+
 			setAverageFrameTime(lastFrameTime);
 			setStepCount(internalStepCount);
 		}, 500);
@@ -663,6 +897,7 @@ export function useSimulation() {
 		lockedSettings,
 		resolutionScale,
 		gridDimensions,
+		shifting,
 		handlePlayPause,
 		handleClear,
 		handleSpeedChange,
@@ -672,6 +907,7 @@ export function useSimulation() {
 		handleToggleRecording,
 		handleToggleLock,
 		handleToggleSpeciesLock,
+		handleToggleShifting,
 		setCanvasRef,
 		isRecording,
 		getShareUrl,

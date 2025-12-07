@@ -1,4 +1,4 @@
-import { Pause, Play, RotateCcw, Sparkles } from "lucide-solid";
+import { Atom, Pause, Play, RotateCcw, Sparkles } from "lucide-solid";
 import { Show } from "solid-js";
 import { Button } from "../Button";
 
@@ -7,6 +7,8 @@ interface PlaybackControlsProps {
 	onPlayPause: () => void;
 	onRandomize: () => void;
 	onClear: () => void;
+	shifting: () => boolean;
+	onToggleShifting: () => void;
 }
 
 export const PlaybackControls = (props: PlaybackControlsProps) => {
@@ -42,6 +44,15 @@ export const PlaybackControls = (props: PlaybackControlsProps) => {
 				aria-label="Randomize settings"
 			>
 				<Sparkles class="w-5 h-5" />
+			</Button>
+
+			<Button
+				onClick={props.onToggleShifting}
+				variant={props.shifting() ? "shift" : "default"}
+				class="px-4 py-2 min-w-[48px] flex items-center justify-center"
+				aria-label="Toggle shifting mode"
+			>
+				<Atom class="w-5 h-5" />
 			</Button>
 
 			<div class="h-8 w-px bg-white/10 mx-2 hidden md:block" />

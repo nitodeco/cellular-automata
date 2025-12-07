@@ -45,6 +45,8 @@ interface Props {
 		speciesIndex: number,
 		key: keyof SpeciesLockedSettings,
 	) => void;
+	shifting: () => boolean;
+	onToggleShifting: () => void;
 }
 
 const STORAGE_KEY = "controldock-collapsed";
@@ -91,6 +93,8 @@ export const ControlDock = (props: Props) => {
 						onPlayPause={props.onPlayPause}
 						onRandomize={props.onRandomize}
 						onClear={props.onClear}
+						shifting={props.shifting}
+						onToggleShifting={props.onToggleShifting}
 					/>
 					<ExportControl
 						viewportWidth={props.viewportWidth}

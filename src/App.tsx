@@ -72,6 +72,8 @@ const App = () => {
 				onToggleRecording={simulationHook.handleToggleRecording}
 				onToggleLock={simulationHook.handleToggleLock}
 				onToggleSpeciesLock={simulationHook.handleToggleSpeciesLock}
+				shifting={simulationHook.shifting}
+				onToggleShifting={simulationHook.handleToggleShifting}
 			/>
 
 			<PerformancePanel
