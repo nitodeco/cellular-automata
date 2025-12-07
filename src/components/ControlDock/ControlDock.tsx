@@ -55,7 +55,7 @@ const STORAGE_KEY = "controldock-collapsed";
 const TRANSITION_DURATION = 150;
 
 export const ControlDock = (props: Props) => {
-	const [collapsed, setCollapsed] = createSignal(false);
+	const [collapsed, setCollapsed] = createSignal(true);
 	const [isTransitioning, setIsTransitioning] = createSignal(false);
 	let transitionTimeout: ReturnType<typeof setTimeout> | undefined;
 
