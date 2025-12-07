@@ -94,6 +94,10 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
     agentAngle += (randomValue - 0.5) * 2.0 * params.turnAngle;
   }
 
+  let jitterStrength = 0.04;
+  let jitterRandom = hash(agentIndex * 3u + u32(config.frameSeed * 7919.0));
+  agentAngle += (jitterRandom - 0.5) * jitterStrength;
+
   var newX = agentX + cos(agentAngle) * params.agentSpeed;
   var newY = agentY + sin(agentAngle) * params.agentSpeed;
 
