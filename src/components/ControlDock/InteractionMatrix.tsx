@@ -64,7 +64,7 @@ export const InteractionMatrix = (props: InteractionMatrixProps) => {
 	return (
 		<div class="glass-panel-subtle flex flex-col gap-4 p-3 rounded-xl h-full">
 			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-1 text-xs font-medium text-gray-200 uppercase tracking-wider">
+				<div class="flex items-center gap-1 text-xs font-semibold text-white uppercase tracking-wider">
 					<LockButton locked={props.locked} onToggle={props.onToggleLock} />
 					Interactions
 				</div>
@@ -86,7 +86,7 @@ export const InteractionMatrix = (props: InteractionMatrixProps) => {
 									<button
 										type="button"
 										onClick={() => applyPreset(preset.matrix, close)}
-										class="text-left px-2.5 py-1.5 text-xs hover:bg-white/10 rounded-xl text-gray-300 hover:text-white transition-all cursor-pointer"
+										class="text-left px-2.5 py-1.5 text-sm hover:bg-white/10 rounded-xl text-gray-200 hover:text-white transition-all cursor-pointer"
 									>
 										{preset.name}
 									</button>

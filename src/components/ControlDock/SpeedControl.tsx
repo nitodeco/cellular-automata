@@ -4,23 +4,21 @@ interface SpeedControlProps {
 }
 
 export const SpeedControl = (props: SpeedControlProps) => {
-	function handleInput(event: Event) {
-		const target = event.target as HTMLInputElement;
-		props.onSpeedChange(Number.parseInt(target.value, 10));
-	}
-
 	return (
-		<div class="flex items-center gap-3 h-[36px]">
-			<span class="text-gray-200 text-[10px] uppercase tracking-wider font-medium">
-				Speed
-			</span>
+		<div class="flex flex-col gap-1">
+			<div class="flex justify-between items-center text-[10px] uppercase tracking-wider font-medium text-gray-400">
+				<span>Speed</span>
+				<span>{props.speed()}</span>
+			</div>
 			<input
 				type="range"
 				min="0"
 				max="100"
 				value={props.speed()}
-				onInput={handleInput}
-				class="glass-slider w-24 cursor-pointer"
+				onInput={(event) =>
+					props.onSpeedChange(Number.parseInt(event.currentTarget.value, 10))
+				}
+				class="glass-slider w-full cursor-pointer"
 			/>
 		</div>
 	);

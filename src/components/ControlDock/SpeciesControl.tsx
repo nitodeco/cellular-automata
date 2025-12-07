@@ -30,7 +30,7 @@ interface SliderControlProps {
 const SliderControl = (props: SliderControlProps) => {
 	return (
 		<div class="flex flex-col gap-1">
-			<div class="flex justify-between items-center text-[10px] uppercase tracking-wider font-bold text-gray-400">
+			<div class="flex justify-between items-center text-[10px] uppercase tracking-wider font-medium text-gray-400">
 				<div class="flex items-center gap-1">
 					<Show when={props.onToggleLock !== undefined}>
 						<LockButton
@@ -73,7 +73,7 @@ export const SpeciesControl = (props: SpeciesControlProps) => {
 	return (
 		<div class="flex flex-col gap-4">
 			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-1 text-xs font-bold text-gray-400 uppercase tracking-wider">
+				<div class="flex items-center gap-1 text-xs font-semibold text-white uppercase tracking-wider">
 					<LockButton
 						locked={props.lockedSettings.colorPreset}
 						onToggle={() => props.onToggleLock("colorPreset")}
@@ -125,7 +125,7 @@ export const SpeciesControl = (props: SpeciesControlProps) => {
 												}}
 											/>
 											<span
-												class={`text-xs uppercase font-bold tracking-wider ${
+												class={`text-xs uppercase font-medium tracking-wider ${
 													isActive ? "text-white" : "text-gray-300"
 												}`}
 											>

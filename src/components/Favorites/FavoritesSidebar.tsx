@@ -89,7 +89,7 @@ export const FavoritesSidebar = (props: Props) => {
 		<>
 			<button
 				type="button"
-				class={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-300 cursor-default ${
+				class={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-150 cursor-default ${
 					props.isOpen
 						? "opacity-100 pointer-events-auto"
 						: "opacity-0 pointer-events-none"
@@ -99,13 +99,15 @@ export const FavoritesSidebar = (props: Props) => {
 			/>
 
 			<div
-				class={`fixed top-0 left-0 h-full w-80 glass-panel z-50 transform transition-transform duration-300 ease-out flex flex-col rounded-r-2xl border-l-0 ${
+				class={`fixed top-0 left-0 h-full w-80 glass-panel z-50 transform transition-transform duration-150 ease-out flex flex-col rounded-r-2xl border-l-0 ${
 					props.isOpen ? "translate-x-0" : "-translate-x-full"
 				}`}
 				style={{
 					background: "rgba(48, 48, 48, 0.5)",
 					"backdrop-filter": "blur(32px) saturate(120%)",
 					"-webkit-backdrop-filter": "blur(32px) saturate(120%)",
+					transition:
+						"transform 150ms ease-out, backdrop-filter 150ms ease-out",
 				}}
 			>
 				<div class="p-4 border-b border-white/10 flex items-center justify-between">
@@ -133,7 +135,7 @@ export const FavoritesSidebar = (props: Props) => {
 							<div class="glass-panel-subtle p-3 rounded-xl hover:bg-white/5 transition-colors group relative">
 								<div class="flex items-start justify-between mb-2">
 									<h3
-										class="font-medium text-gray-200 truncate pr-2"
+										class="text-sm font-medium text-gray-200 truncate pr-2"
 										title={fav.name}
 									>
 										{fav.name}
@@ -146,7 +148,7 @@ export const FavoritesSidebar = (props: Props) => {
 								<div class="flex items-center gap-2 mt-3">
 									<Button
 										onClick={() => handleLoad(fav.settings)}
-										class="flex-1 flex items-center justify-center gap-2 text-xs py-1.5!"
+										class="flex-1 flex items-center justify-center gap-2 text-sm font-medium py-1.5!"
 										variant="accent"
 									>
 										<Play class="w-3 h-3" />

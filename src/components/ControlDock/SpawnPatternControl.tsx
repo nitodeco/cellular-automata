@@ -54,10 +54,10 @@ export const SpawnPatternControl = (props: SpawnPatternControlProps) => {
 					onClick={toggle}
 					class="glass-button flex items-center gap-2 h-[36px] px-3 rounded-xl"
 				>
-					<span class="text-gray-200 text-[10px] uppercase tracking-wider font-medium">
+					<span class="text-gray-400 text-[10px] uppercase tracking-wider font-medium">
 						Spawn
 					</span>
-					<span class="text-gray-300 text-xs">{getDisplayLabel()}</span>
+					<span class="text-gray-200 text-sm">{getDisplayLabel()}</span>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="12"

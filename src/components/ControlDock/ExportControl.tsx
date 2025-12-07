@@ -110,13 +110,13 @@ export const ExportControl = (props: Props) => {
 					}}
 				>
 					<div class="p-2.5 border-b border-white/10">
-						<div class="text-[10px] uppercase text-gray-200 mb-1.5 font-medium tracking-wider">
+						<div class="text-[10px] uppercase text-gray-400 mb-1.5 font-medium tracking-wider">
 							Video
 						</div>
 						<button
 							type="button"
 							onClick={handleToggleRecording}
-							class={`w-full px-2.5 py-2 text-left text-xs border transition-all flex items-center gap-2 cursor-pointer rounded-xl ${
+							class={`w-full px-2.5 py-2 text-left text-sm border transition-all flex items-center gap-2 cursor-pointer rounded-xl ${
 								props.isRecording()
 									? "border-red-400/30 bg-red-500/20 text-red-200 hover:bg-red-500/30"
 									: "border-transparent text-gray-200 hover:bg-white/10"
@@ -134,13 +134,13 @@ export const ExportControl = (props: Props) => {
 					</div>
 
 					<div class="p-2.5">
-						<div class="text-[10px] uppercase text-gray-200 mb-1.5 font-medium tracking-wider">
+						<div class="text-[10px] uppercase text-gray-400 mb-1.5 font-medium tracking-wider">
 							Snapshot
 						</div>
 						<button
 							type="button"
 							onClick={handleViewportExport}
-							class="w-full px-2.5 py-2 text-left text-xs text-gray-200 hover:bg-white/10 border border-transparent cursor-pointer rounded-xl transition-all"
+							class="w-full px-2.5 py-2 text-left text-sm text-gray-200 hover:bg-white/10 border border-transparent cursor-pointer rounded-xl transition-all"
 						>
 							Viewport ({props.viewportWidth}x{props.viewportHeight})
 						</button>
@@ -153,7 +153,7 @@ export const ExportControl = (props: Props) => {
 								<button
 									type="button"
 									onClick={() => handleExport(preset.width, preset.height)}
-									class="w-full px-2.5 py-2 text-left text-xs text-gray-200 hover:bg-white/10 border border-transparent cursor-pointer rounded-xl transition-all"
+									class="w-full px-2.5 py-2 text-left text-sm text-gray-200 hover:bg-white/10 border border-transparent cursor-pointer rounded-xl transition-all"
 								>
 									{preset.label} ({oriented.width}x{oriented.height})
 								</button>

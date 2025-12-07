@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, onMount } from "solid-js";
 import type {
 	SlimeConfig,
 	SpawnPattern,
@@ -49,12 +49,8 @@ interface Props {
 
 const STORAGE_KEY = "controldock-collapsed";
 
-const TRANSITION_DURATION = 150;
-
 export const ControlDock = (props: Props) => {
 	const [collapsed, setCollapsed] = createSignal(true);
-	const [isTransitioning, setIsTransitioning] = createSignal(false);
-	let transitionTimeout: ReturnType<typeof setTimeout> | undefined;
 
 	onMount(() => {
 		const stored = localStorage.getItem(STORAGE_KEY);
@@ -63,25 +59,12 @@ export const ControlDock = (props: Props) => {
 		}
 	});
 
-	onCleanup(() => {
-		if (transitionTimeout) {
-			clearTimeout(transitionTimeout);
-		}
-	});
-
 	createEffect(() => {
 		localStorage.setItem(STORAGE_KEY, String(collapsed()));
 	});
 
 	function handleToggle() {
-		if (transitionTimeout) {
-			clearTimeout(transitionTimeout);
-		}
-		setIsTransitioning(true);
 		setCollapsed(!collapsed());
-		transitionTimeout = setTimeout(() => {
-			setIsTransitioning(false);
-		}, TRANSITION_DURATION);
 	}
 
 	return (
@@ -89,7 +72,7 @@ export const ControlDock = (props: Props) => {
 			<div class="relative flex flex-col items-center w-full max-w-[95vw] md:max-w-6xl">
 				<CollapseButton collapsed={collapsed} onClick={handleToggle} />
 				<div
-					class="glass-panel pointer-events-auto flex flex-row items-center justify-center py-2 px-4 gap-1 md:gap-2 z-40 rounded-2xl rounded-b-none"
+					class="glass-panel pointer-events-auto flex flex-row items-center justify-center py-2 px-4 gap-3 z-40 rounded-2xl rounded-b-none"
 					style={{
 						background: collapsed()
 							? "rgba(255, 255, 255, 0.01)"
@@ -101,7 +84,6 @@ export const ControlDock = (props: Props) => {
 							? "blur(16px) saturate(120%)"
 							: "blur(32px) saturate(120%)",
 						"border-bottom": collapsed() ? undefined : "none",
-						transition: `background ${TRANSITION_DURATION}ms ease-out, backdrop-filter ${TRANSITION_DURATION}ms ease-out, -webkit-backdrop-filter ${TRANSITION_DURATION}ms ease-out, border-bottom ${TRANSITION_DURATION}ms ease-out, border-radius ${TRANSITION_DURATION}ms ease-out`,
 					}}
 				>
 					<PlaybackControls
@@ -120,20 +102,8 @@ export const ControlDock = (props: Props) => {
 					/>
 				</div>
 
-				<div
-					class="grid w-full"
-					style={{
-						"grid-template-rows": collapsed() ? "0fr" : "1fr",
-						transition: `grid-template-rows ${TRANSITION_DURATION}ms ease-out`,
-						overflow: "hidden",
-					}}
-				>
-					<div
-						class={`pointer-events-auto ${collapsed() ? "" : "max-h-[75dvh] md:max-h-[calc(100vh-120px)]"}`}
-						style={{
-							overflow: isTransitioning() || collapsed() ? "hidden" : "auto",
-						}}
-					>
+				<div class={`w-full ${collapsed() ? "hidden" : "block"}`}>
+					<div class="pointer-events-auto max-h-[75dvh] md:max-h-[calc(100vh-120px)] overflow-auto">
 						<div
 							class="glass-panel pointer-events-auto flex flex-col rounded-2xl py-3 px-4 gap-4 z-30"
 							style={{

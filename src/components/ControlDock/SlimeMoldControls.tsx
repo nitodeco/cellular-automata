@@ -18,7 +18,7 @@ interface SliderControlProps {
 const SliderControl = (props: SliderControlProps) => {
 	return (
 		<div class="flex flex-col gap-1">
-			<div class="flex justify-between items-center text-[10px] uppercase tracking-wider font-bold text-gray-400">
+			<div class="flex justify-between items-center text-[10px] uppercase tracking-wider font-medium text-gray-400">
 				<div class="flex items-center gap-1">
 					<Show when={props.onToggleLock !== undefined}>
 						<LockButton
