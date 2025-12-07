@@ -16,11 +16,16 @@ import {
 	type SlimeConfig,
 	type SpeciesConfig,
 	stepSlime,
+	VALID_SPAWN_PATTERNS,
 } from "../core/slime";
 import {
 	createGPUSimulation,
 	type GPUSimulation,
 } from "../core/webgpu/gpuSimulation";
+import {
+	clampedGaussianRandom,
+	generateRandomPopulationRatios,
+} from "../utils/math";
 import {
 	decodeSimulationSettings,
 	encodeSimulationSettings,
@@ -159,7 +164,6 @@ export function useSimulation() {
 		}
 	}
 
-
 	function handleClear() {
 		if (gpuAvailable() && useWebGPU() && gpuSimulation) {
 			gpuSimulation.clear();
@@ -249,33 +253,72 @@ export function useSimulation() {
 
 	function handleRandomize() {
 		const currentConfig = slimeConfig();
-		const randomSpecies = currentConfig.species.map((s) => ({
-			...s,
+
+		const populationRatios = generateRandomPopulationRatios(3, 10);
+
+		const randomSpecies = currentConfig.species.map((species, index) => ({
+			...species,
 			sensorAngle:
-				Math.round(((Math.random() * 180 * Math.PI) / 180) * 100) / 100,
+				Math.round(
+					clampedGaussianRandom(
+						(10 * Math.PI) / 180,
+						(90 * Math.PI) / 180,
+						(45 * Math.PI) / 180,
+						(20 * Math.PI) / 180,
+					) * 100,
+				) / 100,
 			turnAngle:
-				Math.round(((Math.random() * 180 * Math.PI) / 180) * 100) / 100,
-			sensorDist: Math.floor(Math.random() * 64) + 1,
-			depositAmount: Math.floor(Math.random() * 255) + 1,
-			agentSpeed: Math.round((Math.random() * (5 - 0.1) + 0.1) * 100) / 100,
+				Math.round(
+					clampedGaussianRandom(
+						(10 * Math.PI) / 180,
+						(90 * Math.PI) / 180,
+						(45 * Math.PI) / 180,
+						(20 * Math.PI) / 180,
+					) * 100,
+				) / 100,
+			sensorDist: Math.round(clampedGaussianRandom(5, 35, 15, 8)),
+			depositAmount: Math.round(clampedGaussianRandom(20, 150, 60, 30)),
+			agentSpeed:
+				Math.round(clampedGaussianRandom(0.5, 3, 1.5, 0.5) * 100) / 100,
 			colorPreset:
 				COLOR_PRESET_NAMES[
 					Math.floor(Math.random() * COLOR_PRESET_NAMES.length)
 				],
+			agentCount: populationRatios[index],
 		})) as [SpeciesConfig, SpeciesConfig, SpeciesConfig];
 
 		const randomInteractions = Array(3)
 			.fill(0)
-			.map(() =>
+			.map((_, rowIndex) =>
 				Array(3)
 					.fill(0)
-					.map(() => Math.round((Math.random() * 2 - 1) * 10) / 10),
+					.map((_, colIndex) => {
+						if (rowIndex === colIndex) {
+							return (
+								Math.round(clampedGaussianRandom(0.5, 1, 0.8, 0.2) * 10) / 10
+							);
+						}
+						return (
+							Math.round(clampedGaussianRandom(-0.5, 0.5, 0, 0.3) * 10) / 10
+						);
+					}),
 			);
+
+		const spawnPatternsWithoutRandom = VALID_SPAWN_PATTERNS.filter(
+			(pattern) => pattern !== "random",
+		);
+		const randomSpawnPattern =
+			spawnPatternsWithoutRandom[
+				Math.floor(Math.random() * spawnPatternsWithoutRandom.length)
+			];
 
 		const newConfig: SlimeConfig = {
 			...currentConfig,
-			decayRate: Math.round((Math.random() * (20 - 0.1) + 0.1) * 100) / 100,
-			diffuseWeight: Math.round(Math.random() * 100) / 100,
+			decayRate: Math.round(clampedGaussianRandom(0.5, 8, 2.5, 2) * 100) / 100,
+			diffuseWeight:
+				Math.round(clampedGaussianRandom(0.05, 0.5, 0.15, 0.1) * 100) / 100,
+			agentCount: Math.round(clampedGaussianRandom(5, 20, 10, 4) * 100) / 100,
+			spawnPattern: randomSpawnPattern,
 			species: randomSpecies,
 			interactions: randomInteractions,
 		};
@@ -287,7 +330,7 @@ export function useSimulation() {
 
 			const count = calculateAgentCount(newConfig);
 
-			gpuSimulation.reinitAgents(count);
+			gpuSimulation.reinitAgents(count, randomSpawnPattern);
 			gpuSimulation.clear();
 			gpuSimulation.render();
 		} else {

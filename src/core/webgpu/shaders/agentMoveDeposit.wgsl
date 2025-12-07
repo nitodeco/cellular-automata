@@ -100,10 +100,34 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
   let widthF = f32(config.width);
   let heightF = f32(config.height);
 
-  if (newX < 0.0) { newX += widthF; }
-  if (newX >= widthF) { newX -= widthF; }
-  if (newY < 0.0) { newY += heightF; }
-  if (newY >= heightF) { newY -= heightF; }
+  var hitEdge = false;
+
+  if (newX < 0.0) {
+    newX = -newX;
+    agentAngle = 3.14159265 - agentAngle;
+    hitEdge = true;
+  }
+  if (newX >= widthF) {
+    newX = 2.0 * widthF - newX - 1.0;
+    agentAngle = 3.14159265 - agentAngle;
+    hitEdge = true;
+  }
+  if (newY < 0.0) {
+    newY = -newY;
+    agentAngle = -agentAngle;
+    hitEdge = true;
+  }
+  if (newY >= heightF) {
+    newY = 2.0 * heightF - newY - 1.0;
+    agentAngle = -agentAngle;
+    hitEdge = true;
+  }
+
+  if (hitEdge) {
+    let penalty = 0.1;
+    newX = agentX + (newX - agentX) * penalty;
+    newY = agentY + (newY - agentY) * penalty;
+  }
 
   positionsX[agentIndex] = newX;
   positionsY[agentIndex] = newY;

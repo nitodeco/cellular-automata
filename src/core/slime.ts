@@ -281,10 +281,34 @@ export function stepSlime(
 		let newX = agentX + fastCos(agentAngle) * agentSpeed;
 		let newY = agentY + fastSin(agentAngle) * agentSpeed;
 
-		if (newX < 0) newX += width;
-		if (newX >= width) newX -= width;
-		if (newY < 0) newY += height;
-		if (newY >= height) newY -= height;
+		let hitEdge = false;
+
+		if (newX < 0) {
+			newX = -newX;
+			agentAngle = Math.PI - agentAngle;
+			hitEdge = true;
+		}
+		if (newX >= width) {
+			newX = 2 * width - newX - 1;
+			agentAngle = Math.PI - agentAngle;
+			hitEdge = true;
+		}
+		if (newY < 0) {
+			newY = -newY;
+			agentAngle = -agentAngle;
+			hitEdge = true;
+		}
+		if (newY >= height) {
+			newY = 2 * height - newY - 1;
+			agentAngle = -agentAngle;
+			hitEdge = true;
+		}
+
+		if (hitEdge) {
+			const penalty = 0.1;
+			newX = agentX + (newX - agentX) * penalty;
+			newY = agentY + (newY - agentY) * penalty;
+		}
 
 		agentXPositions[agentIndex] = newX;
 		agentYPositions[agentIndex] = newY;
