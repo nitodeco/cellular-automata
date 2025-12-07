@@ -121,7 +121,7 @@ export const DEFAULT_SPECIES_CONFIG: SpeciesConfig = {
 export const DEFAULT_SLIME_CONFIG: SlimeConfig = {
 	decayRate: 2,
 	diffuseWeight: 0.1,
-	spawnPattern: "random",
+	spawnPattern: "circle",
 	agentCount: 5,
 	species: [
 		{ ...DEFAULT_SPECIES_CONFIG, colorPreset: "neon" },
