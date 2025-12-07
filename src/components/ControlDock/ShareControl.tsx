@@ -1,4 +1,4 @@
-import { Link } from "lucide-solid";
+import { AlertCircle, Check, Link } from "lucide-solid";
 import { createSignal, Show } from "solid-js";
 import { Button } from "../Button";
 
@@ -68,7 +68,7 @@ export const ShareControl = (props: Props) => {
 	return (
 		<Button
 			onClick={handleShare}
-			class="px-4 py-2 min-w-[72px] flex items-center justify-center gap-2"
+			class="px-3 md:px-4 py-2 min-w-[50px] md:min-w-[90px] flex items-center justify-center gap-2"
 			aria-label="Share settings"
 		>
 			<Show
@@ -79,15 +79,21 @@ export const ShareControl = (props: Props) => {
 						fallback={
 							<>
 								<Link class="w-5 h-5" />
-								<span class="text-sm font-medium">Share</span>
+								<span class="hidden md:inline text-sm font-medium">Share</span>
 							</>
 						}
 					>
-						<span class="text-sm font-medium text-red-200">Copy failed</span>
+						<AlertCircle class="w-5 h-5 text-red-200" />
+						<span class="hidden md:inline text-sm font-medium text-red-200">
+							Error
+						</span>
 					</Show>
 				}
 			>
-				<span class="text-sm font-medium text-emerald-200">Copied</span>
+				<Check class="w-5 h-5 text-emerald-200" />
+				<span class="hidden md:inline text-sm font-medium text-emerald-200">
+					Copied
+				</span>
 			</Show>
 		</Button>
 	);

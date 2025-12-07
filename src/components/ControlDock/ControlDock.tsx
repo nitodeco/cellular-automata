@@ -85,7 +85,7 @@ export const ControlDock = (props: Props) => {
 	}
 
 	return (
-		<div class="fixed bottom-0 left-0 w-full z-10 flex justify-center pointer-events-none px-4 pb-0">
+		<div class="fixed bottom-0 left-0 w-full z-10 flex justify-center pointer-events-none px-2 md:px-4 pb-0">
 			<div class="relative flex flex-col items-center w-full max-w-[95vw] md:max-w-6xl">
 				<CollapseButton collapsed={collapsed} onClick={handleToggle} />
 				<div

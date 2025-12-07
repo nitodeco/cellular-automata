@@ -592,6 +592,25 @@ export function useSimulation() {
 		gpuSimulation.resize(newDimensions.cols, newDimensions.rows, newAgentCount);
 	}
 
+	function setSimulationSettings(settings: SimulationSettings) {
+		setSpeed(settings.speed);
+		engine?.setSpeed(speedToInterval(settings.speed));
+
+		const newConfig = {
+			...DEFAULT_SLIME_CONFIG,
+			...settings.slimeConfig,
+		};
+		setSlimeConfig(newConfig);
+
+		if (gpuSimulation) {
+			gpuSimulation.setConfig(newConfig);
+			const count = calculateAgentCount(newConfig);
+			gpuSimulation.reinitAgents(count);
+			gpuSimulation.clear();
+			gpuSimulation.render();
+		}
+	}
+
 	createEffect(() => {
 		const currentSpeed = speed();
 		const currentSlimeConfig = slimeConfig();
@@ -656,5 +675,6 @@ export function useSimulation() {
 		setCanvasRef,
 		isRecording,
 		getShareUrl,
+		setSimulationSettings,
 	};
 }

@@ -873,3 +873,93 @@ export function saveLockedSettings(settings: LockedSettings): void {
 		localStorage.setItem(LOCKED_SETTINGS_KEY, JSON.stringify(settings));
 	} catch {}
 }
+
+export interface Favorite {
+	id: string;
+	name: string;
+	settings: SimulationSettings;
+	createdAt: number;
+}
+
+export const FAVORITES_KEY = "simulation-favorites";
+
+function isValidFavorite(value: unknown): value is Favorite {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
+
+	const favorite = value as Record<string, unknown>;
+
+	return (
+		typeof favorite.id === "string" &&
+		typeof favorite.name === "string" &&
+		isValidSimulationSettings(favorite.settings) &&
+		typeof favorite.createdAt === "number"
+	);
+}
+
+export function loadFavorites(): Favorite[] {
+	try {
+		const stored = localStorage.getItem(FAVORITES_KEY);
+		if (stored === null) {
+			return [];
+		}
+
+		const parsed = JSON.parse(stored);
+		if (!Array.isArray(parsed)) {
+			return [];
+		}
+
+		const favorites: Favorite[] = [];
+		for (const item of parsed) {
+			if (item?.settings?.slimeConfig) {
+				migrateSlimeConfig(item.settings.slimeConfig);
+			}
+			if (isValidFavorite(item)) {
+				favorites.push(item);
+			}
+		}
+
+		return favorites.sort((a, b) => b.createdAt - a.createdAt);
+	} catch {
+		return [];
+	}
+}
+
+export function saveFavorites(favorites: Favorite[]): void {
+	try {
+		localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+	} catch {}
+}
+
+export function addFavorite(
+	name: string,
+	settings: SimulationSettings,
+): Favorite[] {
+	const favorites = loadFavorites();
+	const newFavorite: Favorite = {
+		id: crypto.randomUUID(),
+		name,
+		settings,
+		createdAt: Date.now(),
+	};
+	const updated = [newFavorite, ...favorites];
+	saveFavorites(updated);
+	return updated;
+}
+
+export function removeFavorite(id: string): Favorite[] {
+	const favorites = loadFavorites();
+	const updated = favorites.filter((f) => f.id !== id);
+	saveFavorites(updated);
+	return updated;
+}
+
+export function renameFavorite(id: string, newName: string): Favorite[] {
+	const favorites = loadFavorites();
+	const updated = favorites.map((f) =>
+		f.id === id ? { ...f, name: newName } : f,
+	);
+	saveFavorites(updated);
+	return updated;
+}

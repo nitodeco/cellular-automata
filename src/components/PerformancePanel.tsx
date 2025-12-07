@@ -29,8 +29,8 @@ function getScaleColor(scale: number): string {
 
 export const PerformancePanel = (props: Props) => {
 	return (
-		<div class="glass-panel absolute top-4 right-4 text-white px-3 py-2 rounded-lg font-mono text-[11px] z-20 pointer-events-none select-none">
-			<div class="grid grid-cols-[auto_1fr_auto_auto_1fr] gap-x-2 gap-y-0.5 items-center">
+		<div class="glass-panel absolute top-2 right-2 md:top-4 md:right-4 text-white px-2 md:px-3 py-1.5 md:py-2 rounded-lg font-mono text-[10px] md:text-[11px] z-20 pointer-events-none select-none max-w-[calc(100vw-5rem)] md:max-w-none">
+			<div class="grid grid-cols-[auto_1fr_auto_auto_1fr] gap-x-1.5 md:gap-x-2 gap-y-0.5 items-center">
 				<span class="text-gray-400">FPS</span>
 				<span
 					class={`font-semibold tabular-nums text-right ${getFpsColor(props.fps())}`}
